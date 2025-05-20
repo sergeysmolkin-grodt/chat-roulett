@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\VideoSignalingController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\FriendController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -35,4 +36,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user', [AuthController::class, 'update']);
 
     Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
+
+    // Friend Management Routes
+    Route::get('/friends', [FriendController::class, 'index']);
+    Route::get('/friends/pending', [FriendController::class, 'pendingRequests']);
+    Route::post('/friends/send-request/{recipient}', [FriendController::class, 'sendRequest']);
+    Route::post('/friends/accept-request/{friendship}', [FriendController::class, 'acceptRequest']);
+    Route::post('/friends/reject-remove/{friendUser}', [FriendController::class, 'rejectOrRemoveFriend']);
+    Route::get('/users/search', [FriendController::class, 'searchUsers']);
 }); 

@@ -43,6 +43,7 @@ class Kernel extends HttpKernel
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Раскомментируйте, если Sanctum используется для SPA cookies
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\UpdateLastSeenAt::class,
         ],
     ];
 
@@ -64,5 +65,6 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         // 'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class, // Если используете верификацию email
+        'update.last_seen' => \App\Http\Middleware\UpdateLastSeenAt::class,
     ];
 } 

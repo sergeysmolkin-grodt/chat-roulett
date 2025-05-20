@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -31,6 +33,7 @@ class User extends Authenticatable
         'is_searching_for_partner',
         'searching_started_at',
         'avatar_url',
+        'last_seen_at',
     ];
 
     /**
@@ -56,6 +59,7 @@ class User extends Authenticatable
             'subscription_ends_at' => 'datetime',
             'is_searching_for_partner' => 'boolean',
             'searching_started_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 
@@ -65,5 +69,50 @@ class User extends Authenticatable
     public function hasActiveSubscription()
     {
         // Implement the logic to check if the user has an active subscription
+    }
+
+    /**
+     * Запросы в друзья, отправленные этим пользователем.
+     */
+    public function sentFriendRequests(): HasMany
+    {
+        return $this->hasMany(Friendship::class, 'user_id');
+    }
+
+    /**
+     * Запросы в друзья, полученные этим пользователем.
+     */
+    public function receivedFriendRequests(): HasMany
+    {
+        return $this->hasMany(Friendship::class, 'friend_id');
+    }
+
+    /**
+     * Друзья пользователя (принятые запросы, где он user_id).
+     */
+    public function friends(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'friendships', 'user_id', 'friend_id')
+            ->wherePivot('status', 'accepted')
+            ->withTimestamps();
+    }
+
+    /**
+     * Друзья пользователя (принятые запросы, где он friend_id).
+     */
+    public function friendOf(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'friendships', 'friend_id', 'user_id')
+            ->wherePivot('status', 'accepted')
+            ->withTimestamps();
+    }
+
+    /**
+     * Получить всех друзей (объединение двух предыдущих связей).
+     * Это не прямая связь Eloquent, а аксессор или метод модели.
+     */
+    public function getAllFriends()
+    {
+        return $this->friends->merge($this->friendOf);
     }
 }

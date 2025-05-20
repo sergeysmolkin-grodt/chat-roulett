@@ -40,5 +40,12 @@ apiService.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
+// Friend Management
+export const getFriends = () => apiService.get('/friends');
+export const getPendingFriendRequests = () => apiService.get('/friends/pending');
+export const sendFriendRequest = (recipientId: number) => apiService.post(`/friends/send-request/${recipientId}`);
+export const acceptFriendRequest = (friendshipId: number) => apiService.post(`/friends/accept-request/${friendshipId}`);
+export const rejectOrRemoveFriend = (friendUserId: number) => apiService.post(`/friends/reject-remove/${friendUserId}`);
+export const searchUsers = (term: string) => apiService.get('/users/search', { params: { term } });
 
 export default apiService; 
