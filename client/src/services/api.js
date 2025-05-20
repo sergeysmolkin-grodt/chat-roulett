@@ -19,7 +19,7 @@ apiClient.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-export default {
+const apiMethods = {
   register(userData) {
     return apiClient.post('/register', userData);
   },
@@ -33,4 +33,6 @@ export default {
     return apiClient.get('/user');
   }
   // Здесь можно будет добавить другие методы API по мере необходимости
-}; 
+};
+
+export default apiMethods; 

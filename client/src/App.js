@@ -3,6 +3,7 @@ import './App.css';
 import Register from './components/Register';
 import Login from './components/Login';
 import apiService from './services/api';
+import VideoChat from './components/VideoChat';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -113,7 +114,7 @@ function AppContent() { // Переименовали старый App в AppCon
             <button onClick={handleLogout} style={{marginLeft: '10px'}}>Выйти</button>
             {/* Здесь будет основной контент приложения */}
             {user.gender === 'female' || user.subscription_status === 'active' ? (
-                <p style={{marginTop: '20px', color: 'lightgreen'}}>Доступ к чат-рулетке открыт!</p>
+                <VideoChat />
             ): (
                 <p style={{marginTop: '20px', color: 'orange'}}>Для доступа к чат-рулетке мужчинам необходима подписка.</p>
             )}
