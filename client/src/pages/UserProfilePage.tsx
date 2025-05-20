@@ -16,6 +16,13 @@ import { updateUserProfile } from '@/services/apiService';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 
+// Функция для нормализации url (можно вынести в utils)
+const getAvatarUrl = (url?: string | null) => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `/storage/avatars/${url.replace(/^.*[\\/]/, '')}`;
+};
+
 const UserProfilePage = () => {
   const { user, isLoading, fetchUser } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
@@ -196,11 +203,9 @@ const UserProfilePage = () => {
           </Dialog>
         </div>
         <div className="flex flex-col items-center">
-          <Avatar className="h-24 w-24 mb-4 border-2 border-rulet-purple">
-            <AvatarImage src={user.avatar_url || '/placeholder.svg'} alt={user.name} />
-            <AvatarFallback className="bg-rulet-purple/30 text-white text-xl">
-              {user.name?.charAt(0)}
-            </AvatarFallback>
+          <Avatar className="w-32 h-32 border-4 border-violet-500 shadow-lg">
+            <AvatarImage src={getAvatarUrl(user.avatar_url)} alt={user.name} />
+            <AvatarFallback className="text-4xl bg-violet-900">{user.name?.[0] || 'U'}</AvatarFallback>
           </Avatar>
           <h2 className="text-2xl font-bold mb-1">{user.name}</h2>
           {user.username && <p className="text-gray-400 mb-2">@{user.username}</p>}
