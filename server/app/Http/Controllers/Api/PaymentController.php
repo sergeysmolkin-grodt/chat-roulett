@@ -131,7 +131,7 @@ class PaymentController extends Controller
     protected function handleCheckoutSessionCompleted(\Stripe\Checkout\Session $session)
     {
         // Важно: не полагайтесь только на это событие для предоставления доступа.
-        // Используйте customer.subscription.updated для обновления статуса подписки.
+        // Используйтеr customer.subscription.updated для обновления статуса подписки.
         // Это событие хорошо для первичных действий, например, отправки email "Спасибо за покупку".
 
         $stripeCustomerId = $session->customer;
