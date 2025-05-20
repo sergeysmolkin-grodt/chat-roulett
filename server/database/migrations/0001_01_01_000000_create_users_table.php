@@ -17,7 +17,9 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('gender')->nullable();
+            $table->enum('gender', ['male', 'female', 'other']);
+            $table->boolean('is_searching_for_partner')->default(false);
+            $table->timestamp('searching_started_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

@@ -1,30 +1,35 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { useAuth } from '@/contexts/AuthContext';
+import { useWebRTC } from '@/hooks/useWebRTC';
 
-interface VideoChatProps {
-  localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
-  isSearching: boolean;
-  onNext: () => void;
-  onStop: () => void;
-}
+const VideoChat = () => {
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const currentUserId = user ? user.id : null;
+  
+  const {
+    localStream,
+    remoteStream,
+    isCallActive,
+    incomingCall,
+    startCall,
+    acceptIncomingCall,
+    rejectIncomingCall,
+    hangUp,
+    initializeLocalStream,
+  } = useWebRTC(currentUserId);
 
-const VideoChat = ({
-  localStream,
-  remoteStream,
-  isSearching,
-  onNext,
-  onStop
-}: VideoChatProps) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [targetUserIdInput, setTargetUserIdInput] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -35,31 +40,27 @@ const VideoChat = ({
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+    } else if (!remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
     }
   }, [remoteStream]);
 
   const toggleMute = () => {
     if (localStream) {
-      const audioTracks = localStream.getAudioTracks();
-      audioTracks.forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsMuted(!isMuted);
+      localStream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
+      setIsMuted(prev => !prev);
       toast({
-        description: isMuted ? "Microphone turned on" : "Microphone turned off",
+        description: !isMuted ? "Microphone turned off" : "Microphone turned on",
       });
     }
   };
 
   const toggleCamera = () => {
     if (localStream) {
-      const videoTracks = localStream.getVideoTracks();
-      videoTracks.forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsCameraOff(!isCameraOff);
+      localStream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
+      setIsCameraOff(prev => !prev);
       toast({
-        description: isCameraOff ? "Camera turned on" : "Camera turned off",
+        description: !isCameraOff ? "Camera turned off" : "Camera turned on",
       });
     }
   };
@@ -78,10 +79,73 @@ const VideoChat = ({
     setIsFullscreen(!isFullscreen);
   };
 
+  const handleStartSearchOrCallNext = () => {
+    if (!currentUserId) {
+        alert("Please login first.");
+        return;
+    }
+    if (!localStream) {
+        alert("Please enable your camera and microphone first.");
+        initializeLocalStream();
+        return;
+    }
+    const targetId = parseInt(targetUserIdInput, 10);
+    if (!isNaN(targetId) && targetId !== currentUserId) {
+      console.log(`Attempting to start call with user ID: ${targetId}`);
+      setIsSearching(true);
+      startCall(targetId);
+    } else {
+      alert('Please enter a valid target User ID (cannot be your own ID).');
+    }
+  };
+
+  const handleStopCall = () => {
+    hangUp();
+    setIsSearching(false);
+  };
+
+  const handleAcceptCall = () => {
+    if (!localStream) {
+        alert("Please enable your camera and microphone to accept the call.");
+        initializeLocalStream();
+        return;
+    }
+    acceptIncomingCall();
+    setIsSearching(false);
+  };
+
+  const handleRejectCall = () => {
+    rejectIncomingCall();
+  };
+  
+  useEffect(() => {
+    if (isCallActive || incomingCall === null) {
+        setIsSearching(false);
+    }
+  }, [isCallActive, incomingCall]);
+
+  if (isAuthLoading) {
+    return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Loading user...</p></div>;
+  }
+
+  if (!isAuthenticated || !currentUserId) {
+    return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Please log in to use the chat.</p></div>;
+  }
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-rulet-dark">
+      <div className="absolute top-4 left-4 z-10 bg-gray-700 p-2 rounded shadow">
+        <input 
+            type="number" 
+            placeholder="Target User ID" 
+            value={targetUserIdInput} 
+            onChange={(e) => setTargetUserIdInput(e.target.value)} 
+            className="p-1 rounded bg-gray-800 text-white border border-gray-600"
+            disabled={isCallActive || !!incomingCall || isSearching}
+        />
+      </div>
+
       <ResizablePanelGroup direction="horizontal" className="h-[calc(100%-80px)]">
-        {/* Local Video (Left half) */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="relative w-full h-full">
             <video 
@@ -96,15 +160,22 @@ const VideoChat = ({
                 <p className="text-white text-lg">Camera Off</p>
               </div>
             )}
+            {!localStream && !isAuthLoading && (
+                 <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
+                    <p className="text-white text-lg mb-2">Camera and microphone are not enabled.</p>
+                    <Button onClick={initializeLocalStream} className="bg-rulet-purple hover:bg-rulet-purple-dark">
+                        Enable Camera & Mic
+                    </Button>
+                </div>
+            )}
           </div>
         </ResizablePanel>
         
         <ResizableHandle withHandle />
         
-        {/* Remote Video (Right half) */}
         <ResizablePanel defaultSize={50} minSize={30}>
           <div className="relative w-full h-full">
-            {remoteStream ? (
+            {remoteStream && isCallActive ? (
               <video 
                 ref={remoteVideoRef} 
                 autoPlay 
@@ -114,15 +185,25 @@ const VideoChat = ({
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-rulet-dark">
                 <div className="text-center">
-                  {isSearching ? (
+                  {isSearching && !isCallActive && !incomingCall && (
                     <div className="flex flex-col items-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rulet-purple mb-4"></div>
-                      <p className="text-lg text-white">Searching for a chat partner...</p>
+                      <p className="text-lg text-white">Connecting to user {targetUserIdInput}...</p>
                     </div>
-                  ) : (
+                  )}
+                  {incomingCall && !isCallActive && (
                     <div className="flex flex-col items-center">
-                      <p className="text-lg text-white mb-4">Click "Start" to find a chat partner</p>
+                      <p className="text-lg text-white mb-4">Incoming call from User ID: {incomingCall.fromUserId}</p>
+                      <div className="flex space-x-4">
+                        <Button onClick={handleAcceptCall} className="bg-green-500 hover:bg-green-600">Accept</Button>
+                        <Button onClick={handleRejectCall} className="bg-red-500 hover:bg-red-600">Reject</Button>
+                      </div>
                     </div>
+                  )}
+                  {!isSearching && !isCallActive && !incomingCall && (
+                     <p className="text-lg text-white mb-4">
+                        {localStream ? "Click \"Next\" to find a chat partner or enter User ID above." : "Enable camera to start."}
+                     </p>
                   )}
                 </div>
               </div>
@@ -131,11 +212,11 @@ const VideoChat = ({
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {/* Control buttons */}
       <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-4">
         <Button
           onClick={toggleMute}
-          className={`rounded-full w-12 h-12 flex items-center justify-center ${
+          disabled={!localStream || isCallActive}
+          className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
             isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
           }`}
         >
@@ -157,19 +238,27 @@ const VideoChat = ({
           )}
         </Button>
 
-        <Button
-          onClick={onNext}
-          className="bg-rulet-purple hover:bg-rulet-purple-dark rounded-full w-16 h-16 flex items-center justify-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
-            <polygon points="5 4 15 12 5 20 5 4"></polygon>
-            <line x1="19" y1="5" x2="19" y2="19"></line>
-          </svg>
-        </Button>
+        {isCallActive ? (
+            <Button
+                onClick={handleStopCall}
+                className="bg-red-500 hover:bg-red-600 rounded-full w-16 h-16 flex items-center justify-center"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+            </Button>
+        ) : (
+            <Button
+                onClick={handleStartSearchOrCallNext}
+                disabled={!localStream || isSearching || !!incomingCall}
+                className="bg-rulet-purple hover:bg-rulet-purple-dark rounded-full w-16 h-16 flex items-center justify-center"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </Button>
+        )}
 
         <Button
           onClick={toggleCamera}
-          className={`rounded-full w-12 h-12 flex items-center justify-center ${
+          disabled={!localStream || isCallActive}
+          className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
             isCameraOff ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
           }`}
         >

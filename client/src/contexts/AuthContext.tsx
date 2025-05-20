@@ -1,139 +1,83 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import apiClient, { getCsrfCookie } from '@/lib/api';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import apiService from '../services/apiService'; // Наш API сервис
 
-interface User {
+export interface User {
   id: number;
   name: string;
   email: string;
-  gender: 'male' | 'female';
-  stripe_customer_id?: string | null;
-  subscription_id?: string | null;
-  subscription_status?: string | null; // e.g., 'active', 'canceled', 'incomplete', 'past_due'
-  subscription_ends_at?: string | null;
-  // Add other user fields as needed
+  gender: 'male' | 'female' | 'other';
+  // добавь другие поля пользователя, если они есть
+  // Например, для Stripe:
+  // stripe_customer_id?: string | null;
+  // stripe_subscription_id?: string | null;
+  // stripe_subscription_status?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  setToken: React.Dispatch<React.SetStateAction<string | null>>;
-  login: (userData: User, authToken: string) => void;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
   isLoading: boolean;
-  isAuthenticated: boolean;
+  isAuthenticated: boolean; // Добавим для удобства
+  login: (token: string, userData: User) => void;
+  logout: () => Promise<void>;
+  fetchUser: () => Promise<void>; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Начальная загрузка пользователя
 
-  const fetchUser = async (currentToken: string): Promise<User | null> => {
-    console.log('[AuthContext] fetchUser called with token:', currentToken ? 'Exists' : 'None');
-    if (!currentToken) {
-      setUser(null);
-      localStorage.removeItem('user');
-      console.log('[AuthContext] fetchUser: No token, user set to null');
-      return null;
+  const fetchUser = async () => {
+    const token = localStorage.getItem('authToken');
+    if (token && !user) { // Загружаем только если есть токен и пользователя еще нет
+      setIsLoading(true);
+      try {
+        // apiService уже должен иметь интерсептор для добавления токена
+        const response = await apiService.get<User>('/user');
+        setUser(response.data);
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        localStorage.removeItem('authToken'); // Удаляем невалидный токен
+        setUser(null);
+      }
     }
-    try {
-      const response = await apiClient.get('/user');
-      const userData = response.data as User;
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      console.log('[AuthContext] fetchUser: User data fetched and set:', userData);
-      return userData;
-    } catch (error) {
-      console.error("[AuthContext] Failed to fetch user data:", error);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      setToken(null);
-      setUser(null);
-      console.log('[AuthContext] fetchUser: Error, token/user removed, user set to null');
-      return null;
-    }
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      console.log('[AuthContext] initializeAuth started');
-      setIsLoading(true);
-      await getCsrfCookie();
-      const storedToken = localStorage.getItem('authToken');
-      console.log('[AuthContext] initializeAuth - storedToken:', storedToken ? 'Exists' : 'None');
-      
-      let fetchedUserData: User | null = null;
-      if (storedToken) {
-        setToken(storedToken);
-        fetchedUserData = await fetchUser(storedToken);
-      } else {
-        setUser(null); 
-        console.log('[AuthContext] initializeAuth: No token, user set to null');
-      }
-      console.log('[AuthContext] initializeAuth completed:', { token: storedToken, user: fetchedUserData });
-      setIsLoading(false);
-    };
-    initializeAuth();
-  }, []);
+    fetchUser();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Пустой массив зависимостей, чтобы выполнилось один раз при монтировании
 
-  const login = (userData: User, authToken: string) => {
-    console.log('[AuthContext] login called:', { userData, authToken });
-    localStorage.setItem('authToken', authToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setToken(authToken);
+  const login = (token: string, userData: User) => {
+    localStorage.setItem('authToken', token);
     setUser(userData);
-    console.log('[AuthContext] login completed, state updated.');
   };
 
   const logout = async () => {
-    console.log('[AuthContext] logout called');
     setIsLoading(true);
-    const currentToken = token; 
     try {
-      if (currentToken) {
-         await apiClient.post('/logout');
-         console.log('[AuthContext] logout: Server logout successful');
-      }      
+      await apiService.post('/logout');
     } catch (error) {
-      console.error("[AuthContext] Logout failed on server:", error);
+      console.error("Logout failed, but clearing session locally:", error);
     } finally {
       localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      setToken(null);
       setUser(null);
-      console.log('[AuthContext] logout: Token/user removed, state updated.');
+      // Можно также очистить другие связанные состояния, если необходимо
+      // Например, echo.disconnect() если он был подключен глобально
       setIsLoading(false);
     }
   };
 
-  const refreshUser = async () => {
-    console.log('[AuthContext] refreshUser called');
-    setIsLoading(true);
-    const currentToken = localStorage.getItem('authToken'); 
-    let refreshedUserData: User | null = null;
-    if (currentToken) {
-      refreshedUserData = await fetchUser(currentToken);
-    }
-    console.log('[AuthContext] refreshUser completed:', { user: refreshedUserData });
-    setIsLoading(false);
-  };
-  
-  const isAuthenticated = !!token && !!user;
-  // Add a log to see when isAuthenticated changes
-  // console.log('[AuthContext] isAuthenticated check:', { token: !!token, user: !!user, isAuthenticated });
-
   return (
-    <AuthContext.Provider value={{ user, token, setUser, setToken, login, logout, refreshUser, isLoading, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
