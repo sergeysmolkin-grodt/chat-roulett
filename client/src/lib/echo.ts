@@ -1,5 +1,6 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import apiService from '@/services/apiService';
 
 // @ts-ignore // Pusher types might not align perfectly with Echo's expectations initially
 window.Pusher = Pusher;
@@ -18,27 +19,27 @@ const echo = new Echo({
     wssPort: VITE_REVERB_PORT, // Для Reverb wsPort и wssPort обычно одинаковы, если TLS терминируется на Reverb
     forceTLS: VITE_REVERB_SCHEME === 'wss',
     enabledTransports: ['ws', 'wss'],
+    authEndpoint: '/api/broadcasting/auth', // Исправлено для работы с API-префиксом
     // Для подключения к приватным каналам, Echo будет использовать /broadcasting/auth эндпоинт
     // Laravel Sanctum должен автоматически обрабатывать этот запрос, если cookies настроены правильно
     // или если мы передаем токен.
     // Убедимся, что наш apiService (axios instance) настроен на withCredentials: true
-    // authEndpoint: '/broadcasting/auth', // Этот эндпоинт по умолчанию в Laravel
-    // authorizer: (channel, options) => { // Пример кастомного authorizer если нужно
-    //     return {
-    //         authorize: (socketId, callback) => {
-    //             apiService.post('/broadcasting/auth', {
-    //                 socket_id: socketId,
-    //                 channel_name: channel.name
-    //             })
-    //             .then(response => {
-    //                 callback(null, response.data);
-    //             })
-    //             .catch(error => {
-    //                 callback(error);
-    //             });
-    //         }
-    //     };
-    // },
+     authorizer: (channel, options) => { // Пример кастомного authorizer если нужно
+         return {
+             authorize: (socketId, callback) => {
+                 apiService.post('/broadcasting/auth', {
+                     socket_id: socketId,
+                     channel_name: channel.name
+                 })
+                 .then(response => {
+                     callback(null, response.data);
+                 })
+                 .catch(error => {
+                     callback(error, null);
+                 });
+             }
+         };
+     },
 });
 
 export default echo; 

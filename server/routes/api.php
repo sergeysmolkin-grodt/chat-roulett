@@ -7,12 +7,15 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\VideoSignalingController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\FriendController;
+use Illuminate\Support\Facades\Broadcast;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Stripe Webhook
 Route::post('/stripe/webhook', [PaymentController::class, 'handleWebhook']);
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

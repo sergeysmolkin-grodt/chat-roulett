@@ -11,17 +11,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getFriends, getPendingFriendRequests, acceptFriendRequest, rejectOrRemoveFriend, searchUsers, sendFriendRequest } from '@/services/apiService';
 import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 
 // Типы для данных с бэкенда
 interface UserProfile {
   id: number;
-  name: string;
-  username?: string; // Предполагаем, что username может быть (если есть на бэке)
+  name: string | null;
+  username?: string | null;
   email: string;
   avatar_url: string | null;
-  isOnline?: boolean; // Для отображения статуса, если будем его получать
-  lastSeen?: string; // Аналогично
-  // Другие поля User, которые возвращает бэкэнд
+  last_seen_at: string | null;
+  isOnline?: boolean;
 }
 
 interface FriendRequest {
@@ -33,6 +33,15 @@ interface FriendRequest {
   updated_at: string;
   user: UserProfile; // Информация об отправителе запроса
 }
+
+const formatLastSeen = (lastSeenAt: string | null) => {
+  if (!lastSeenAt) return '';
+  try {
+    return formatDistanceToNow(parseISO(lastSeenAt), { addSuffix: true, locale: undefined });
+  } catch {
+    return '';
+  }
+};
 
 const FriendsPage = () => {
   const { user: currentUser, isAuthenticated } = useAuth();
@@ -187,19 +196,19 @@ const FriendsPage = () => {
   const onlineFriendsList = useMemo(() => friendsList.filter(friend => friend.isOnline), [friendsList]);
 
   const filteredFriends = useMemo(() => friendsList.filter(friend => 
-    friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (friend.username && friend.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
     friend.email.toLowerCase().includes(searchTerm.toLowerCase())
   ), [friendsList, searchTerm]);
 
   const filteredOnlineFriends = useMemo(() => onlineFriendsList.filter(friend => 
-    friend.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    friend.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (friend.username && friend.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
     friend.email.toLowerCase().includes(searchTerm.toLowerCase())
   ), [onlineFriendsList, searchTerm]);
   
   const filteredPendingRequests = useMemo(() => pendingRequestsList.filter(request => 
-    request.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    request.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (request.user.username && request.user.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
     request.user.email.toLowerCase().includes(searchTerm.toLowerCase())
   ), [pendingRequestsList, searchTerm]);
@@ -276,7 +285,7 @@ const FriendsPage = () => {
                       <div className="relative">
                         <Avatar className="h-12 w-12 border border-rulet-purple/30">
                           <AvatarImage src={friend.avatar_url || undefined} />
-                          <AvatarFallback>{friend.name[0]}</AvatarFallback>
+                          <AvatarFallback>{friend.name?.[0] || ''}</AvatarFallback>
                         </Avatar>
                         {friend.isOnline && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-black" title="Онлайн"></span>
@@ -289,7 +298,7 @@ const FriendsPage = () => {
                     </div>
                     <div className="text-right">
                       <span className={`text-xs ${friend.isOnline ? 'text-green-500' : 'text-gray-400'}`}>
-                        {friend.isOnline ? 'Онлайн' : (friend.lastSeen || 'Офлайн')}
+                        {friend.isOnline ? 'Онлайн' : (friend.last_seen_at ? `Был(а) в сети ${formatLastSeen(friend.last_seen_at)}` : 'Офлайн')}
                       </span>
                       <div className="flex gap-2 mt-1">
                         <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple">
@@ -330,7 +339,7 @@ const FriendsPage = () => {
                       <div className="relative">
                         <Avatar className="h-12 w-12 border border-rulet-purple/30">
                           <AvatarImage src={friend.avatar_url || undefined} />
-                          <AvatarFallback>{friend.name[0]}</AvatarFallback>
+                          <AvatarFallback>{friend.name?.[0] || ''}</AvatarFallback>
                         </Avatar>
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-black" title="Онлайн"></span>
                       </div>
@@ -380,7 +389,7 @@ const FriendsPage = () => {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12 border border-rulet-purple/30">
                         <AvatarImage src={request.user.avatar_url || undefined} />
-                        <AvatarFallback>{request.user.name[0]}</AvatarFallback>
+                        <AvatarFallback>{request.user.name?.[0] || ''}</AvatarFallback>
                       </Avatar>
                       <div>
                         <h3 className="font-medium">{request.user.name}</h3>
@@ -446,7 +455,7 @@ const FriendsPage = () => {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={foundUser.avatar_url || undefined} />
-                        <AvatarFallback>{foundUser.name[0]}</AvatarFallback>
+                        <AvatarFallback>{foundUser.name?.[0] || ''}</AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-white">{foundUser.name}</p>
@@ -474,7 +483,7 @@ const FriendsPage = () => {
         </div>
       )}
 
-      <NavBar isPremium={currentUser?.subscription_status === 'active'} />
+      <NavBar />
     </div>
   );
 };

@@ -14,7 +14,11 @@ Broadcast::channel('private-video-chat.{userId}', function ($user, $userId) {
 // Канал присутствия для отслеживания онлайн-статуса
 Broadcast::channel('online-status', function ($user) {
     if (Auth::check()) { // Убедимся, что пользователь аутентифицирован
-        return ['id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatar_url]; // Данные, которые будут доступны другим на канале
+        return [
+            'id' => $user->id, 
+            'name' => $user->name, 
+            'avatar_url' => $user->avatar_url
+        ]; // Данные, которые будут доступны другим на канале
     }
     return false; // Запрещаем анонимный доступ
 });

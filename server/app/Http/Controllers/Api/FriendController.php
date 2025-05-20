@@ -17,7 +17,16 @@ class FriendController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $friends = $user->getAllFriends(); // Используем новый метод
+        $friends = $user->getAllFriends()->map(function ($friend) {
+            return [
+                'id' => $friend->id,
+                'name' => $friend->name,
+                'username' => $friend->username,
+                'email' => $friend->email,
+                'avatar_url' => $friend->avatar_url,
+                'last_seen_at' => $friend->last_seen_at,
+            ];
+        });
         return response()->json($friends);
     }
 
@@ -120,10 +129,7 @@ class FriendController extends Controller
 
         // Временный упрощенный запрос для диагностики
         $users = User::where('username', 'like', "%$searchTerm%")
-                       // ->orWhere('name', 'like', "%$searchTerm%") // Временно уберем
-                       // ->orWhere('email', 'like', "%$searchTerm%") // Временно уберем
-                       // ->where('id', '!= ', $currentUser->id) // Временно уберем
-                       ->select('id', 'name', 'username', 'email', 'avatar_url')
+                       ->select('id', 'name', 'username', 'email', 'avatar_url', 'last_seen_at')
                        ->take(10)
                        ->get();
 
