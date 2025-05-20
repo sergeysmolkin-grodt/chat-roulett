@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean; // Добавим для удобства
-  login: (token: string, userData: User) => void;
+  login: (userData: User, token: string) => void;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>; 
 }
@@ -28,30 +28,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Начальная загрузка пользователя
 
-  const fetchUser = async () => {
+  // Восстанавливаем пользователя из localStorage при инициализации
+  useEffect(() => {
     const token = localStorage.getItem('authToken');
-    if (token && !user) { // Загружаем только если есть токен и пользователя еще нет
-      setIsLoading(true);
+    const storedUser = localStorage.getItem('authUser');
+    if (token && storedUser) {
       try {
-        // apiService уже должен иметь интерсептор для добавления токена
-        const response = await apiService.get<User>('/user');
-        setUser(response.data);
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-        localStorage.removeItem('authToken'); // Удаляем невалидный токен
+        setUser(JSON.parse(storedUser));
+      } catch {
         setUser(null);
       }
     }
-    setIsLoading(false);
+    fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchUser = async () => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      setIsLoading(true);
+      try {
+        const response = await apiService.get<User>('/user');
+        setUser(response.data);
+        localStorage.setItem('authUser', JSON.stringify(response.data));
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        setUser(null);
+      }
+      setIsLoading(false);
+    } else {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => {
-    fetchUser();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Пустой массив зависимостей, чтобы выполнилось один раз при монтировании
-
-  const login = (token: string, userData: User) => {
+  const login = (userData: User, token: string) => {
     localStorage.setItem('authToken', token);
+    localStorage.setItem('authUser', JSON.stringify(userData));
     setUser(userData);
   };
 
@@ -63,9 +77,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error("Logout failed, but clearing session locally:", error);
     } finally {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
       setUser(null);
-      // Можно также очистить другие связанные состояния, если необходимо
-      // Например, echo.disconnect() если он был подключен глобально
       setIsLoading(false);
     }
   };

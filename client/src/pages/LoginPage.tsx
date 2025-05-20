@@ -44,7 +44,11 @@ const LoginPage = () => {
     } catch (err: any) {
       let errorMessage = "Не удалось войти. Пожалуйста, проверьте свои учетные данные.";
       if (err.response && err.response.data && err.response.data.message) {
-        errorMessage = err.response.data.message;
+        if (err.response.data.message === "Unauthorized") {
+          errorMessage = "Неправильный email или пароль.";
+        } else {
+          errorMessage = err.response.data.message;
+        }
       } else if (err.response && err.response.data && err.response.data.errors) {
         errorMessage = Object.values(err.response.data.errors).flat().join(' ');
       }
@@ -75,6 +79,11 @@ const LoginPage = () => {
           </CardHeader>
           
           <CardContent>
+            {error && (
+              <div className="mb-4 p-2 rounded bg-red-500/10 border border-red-500 text-red-500 text-center">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-white">Email</Label>
@@ -105,8 +114,6 @@ const LoginPage = () => {
                   Забыли пароль?
                 </Link>
               </div>
-
-              {error && <p className="text-sm text-red-500">{error}</p>}
               
               <Button type="submit" className="w-full bg-rulet-purple hover:bg-rulet-purple-dark" disabled={isLoading}>
                 {isLoading ? 'Вход...' : 'Войти'}

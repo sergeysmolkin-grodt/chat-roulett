@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const VITE_API_BASE_URL = 'http://localhost:8081/api';
 
 const apiService = axios.create({
   baseURL: VITE_API_BASE_URL,
@@ -19,7 +19,7 @@ const apiService = axios.create({
 // Обычно для SPA с Sanctum, первый запрос к /sanctum/csrf-cookie устанавливает cookie
 export const fetchCsrfToken = async () => {
   try {
-    await axios.get(import.meta.env.VITE_APP_URL ? `${import.meta.env.VITE_APP_URL}/sanctum/csrf-cookie` : 'http://localhost:8000/sanctum/csrf-cookie', {
+    await axios.get('http://localhost:8081/sanctum/csrf-cookie', {
       withCredentials: true,
     });
     console.log('CSRF cookie fetched');

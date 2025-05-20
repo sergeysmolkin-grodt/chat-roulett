@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Your Laravel backend URL
-  withCredentials: true, // Important for Sanctum
+  baseURL: 'http://localhost:8081/api',
+  withCredentials: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
