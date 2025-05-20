@@ -61,7 +61,7 @@ const RegisterPage = () => {
         gender: isFemale ? 'female' : 'male',
       });
 
-      login(response.data.user, response.data.token);
+      login(response.data.user, response.data.access_token);
       
       toast({
         title: "Регистрация успешна",

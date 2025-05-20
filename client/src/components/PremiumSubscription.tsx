@@ -1,13 +1,35 @@
-
 import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PremiumSubscriptionProps {
   onSubscribe: () => void;
+  isLoading: boolean;
 }
 
-const PremiumSubscription = ({ onSubscribe }: PremiumSubscriptionProps) => {
+const PremiumSubscription = ({ onSubscribe, isLoading }: PremiumSubscriptionProps) => {
+  const { user, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated || !user) {
+    return <p className="text-center text-gray-400">Пожалуйста, войдите в систему, чтобы управлять подпиской.</p>;
+  }
+
+  if (user.gender === 'female') {
+    return <p className="text-center text-white">Для женщин доступ предоставляется бесплатно!</p>;
+  }
+
+  if (user.subscription_status === 'active') {
+    return (
+      <div className="text-center">
+        <h3 className="text-xl font-semibold text-green-400">У вас активна Premium подписка!</h3>
+        {user.subscription_ends_at && 
+          <p className="text-gray-300">Дата окончания: {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
+        }
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md mx-auto">
       <Card className="bg-black/60 border border-rulet-purple/30 p-6 backdrop-blur-sm">
@@ -52,8 +74,9 @@ const PremiumSubscription = ({ onSubscribe }: PremiumSubscriptionProps) => {
           <Button 
             onClick={onSubscribe} 
             className="w-full bg-rulet-purple hover:bg-rulet-purple-dark text-white font-semibold py-3 rounded-lg transition duration-200"
+            disabled={isLoading}
           >
-            Subscribe Now
+            {isLoading ? 'Обработка...' : 'Subscribe Now'}
           </Button>
         </div>
         

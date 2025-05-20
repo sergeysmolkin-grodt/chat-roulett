@@ -34,7 +34,7 @@ const LoginPage = () => {
         password,
       });
 
-      login(response.data.user, response.data.token);
+      login(response.data.user, response.data.access_token);
       
       toast({
         title: "Вход выполнен",

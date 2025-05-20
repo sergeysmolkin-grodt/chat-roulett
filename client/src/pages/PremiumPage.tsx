@@ -1,22 +1,62 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import NavBar from '@/components/NavBar';
 import PremiumSubscription from '@/components/PremiumSubscription';
 import Logo from '@/components/Logo';
 import DownloadAppButtons from '@/components/DownloadAppButtons';
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
+import apiClient from '@/lib/api';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import { Button } from '@/components/ui/button';
 
 const PremiumPage = () => {
   const { toast } = useToast();
-  
-  const handleSubscribe = () => {
-    // In a real app, this would open a payment gateway
-    toast({
-      title: "Subscription Initiated",
-      description: "In a real app, this would redirect to a payment processor.",
-    });
+  const { user, isAuthenticated } = useAuth();
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
+
+  const handleInitiateSubscription = async () => {
+    if (!user || user.gender !== 'male' || user.subscription_status === 'active') {
+      toast({
+        title: "Подписка недоступна",
+        description: user?.gender === 'female' ? "Женщинам доступ предоставляется бесплатно." : "У вас уже есть активная подписка или подписка недоступна.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setIsLoadingCheckout(true);
+    try {
+      const response = await apiClient.post('/create-checkout-session');
+      const { stripe_public_key, checkout_url } = response.data;
+
+      if (!stripe_public_key || !checkout_url) {
+        throw new Error('Не удалось получить данные для Stripe Checkout.');
+      }
+
+      setStripePromise(loadStripe(stripe_public_key));
+      setCheckoutUrl(checkout_url);
+      window.location.href = checkout_url;
+
+    } catch (error: any) {
+      console.error("Ошибка при создании сессии Stripe Checkout:", error);
+      toast({
+        title: "Ошибка подписки",
+        description: error.message || "Не удалось инициировать процесс подписки. Попробуйте позже.",
+        variant: "destructive",
+      });
+      setStripePromise(null);
+      setCheckoutUrl(null);
+    } finally {
+      setIsLoadingCheckout(false);
+    }
   };
-  
+
+  const showSubscriptionBlock = isAuthenticated && user && user.gender === 'male' && user.subscription_status !== 'active';
+  const isSubscribed = isAuthenticated && user && user.subscription_status === 'active';
+  const isFemale = isAuthenticated && user && user.gender === 'female';
+
   return (
     <div className="min-h-screen bg-rulet-dark flex flex-col pb-16">
       <div className="flex-1 overflow-y-auto">
@@ -28,17 +68,38 @@ const PremiumPage = () => {
           <div className="mb-12 text-center">
             <h1 className="text-3xl font-bold text-white mb-4">Upgrade Your Experience</h1>
             <p className="text-gray-300 max-w-xl mx-auto">
-              Get instant access to female chat partners without waiting in queue.
-              Premium users enjoy priority matching and enhanced features.
+              {isFemale 
+                ? "Для вас доступ к основным функциям чата предоставляется бесплатно!"
+                : isSubscribed 
+                  ? "Спасибо за вашу подписку! Вы наслаждаетесь всеми премиум преимуществами."
+                  : "Get instant access to female chat partners without waiting in queue. Premium users enjoy priority matching and enhanced features."}
             </p>
           </div>
           
-          <div className="mb-12">
-            <PremiumSubscription onSubscribe={handleSubscribe} />
-          </div>
+          {showSubscriptionBlock && (
+            <div className="mb-12">
+              <PremiumSubscription onSubscribe={handleInitiateSubscription} isLoading={isLoadingCheckout} />
+            </div>
+          )}
+
+          {isSubscribed && (
+            <div className="mb-12 text-center p-6 bg-green-500/10 border border-green-500 rounded-lg">
+                <h2 className="text-2xl font-bold text-green-400">У вас активна Premium подписка!</h2>
+                {user?.subscription_ends_at && (
+                    <p className="text-gray-300">Дата окончания подписки: {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
+                )}
+            </div>
+          )}
+
+          {isFemale && (
+             <div className="mb-12 text-center p-6 bg-pink-500/10 border border-pink-500 rounded-lg">
+                <h2 className="text-2xl font-bold text-pink-400">Бесплатный доступ для женщин!</h2>
+                <p className="text-gray-300">Наслаждайтесь всеми прелестями общения без ограничений.</p>
+            </div>
+          )}
           
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-semibold text-white mb-4">Why Choose Premium?</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">Why Choose Premium? (For Men)</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30">
                 <div className="text-rulet-purple text-4xl mb-4">
@@ -79,8 +140,6 @@ const PremiumPage = () => {
           </div>
         </div>
       </div>
-      
-      <NavBar isPremium={false} />
     </div>
   );
 };
