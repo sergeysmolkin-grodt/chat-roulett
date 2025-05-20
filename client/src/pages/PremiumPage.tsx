@@ -28,7 +28,7 @@ const PremiumPage = () => {
     }
     setIsLoadingCheckout(true);
     try {
-      const response = await apiClient.post('/create-checkout-session');
+      const response = await apiClient.post('payment/create-checkout-session');
       const { stripe_public_key, checkout_url } = response.data;
 
       if (!stripe_public_key || !checkout_url) {

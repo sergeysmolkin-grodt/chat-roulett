@@ -52,8 +52,8 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Stripe Price ID не настроен.'], 500);
         }
 
-        $successUrl = config('app.frontend_url', 'http://localhost:3000') . '/payment/success?session_id={CHECKOUT_SESSION_ID}';
-        $cancelUrl = config('app.frontend_url', 'http://localhost:3000') . '/payment/cancel';
+        $successUrl = config('app.frontend_url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}';
+        $cancelUrl = config('app.frontend_url') . '/payment/cancel';
 
         try {
             $checkoutSession = StripeCheckoutSession::create([
