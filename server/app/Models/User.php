@@ -22,6 +22,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'gender',
@@ -56,6 +57,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'username' => 'string',
             'subscription_ends_at' => 'datetime',
             'is_searching_for_partner' => 'boolean',
             'searching_started_at' => 'datetime',

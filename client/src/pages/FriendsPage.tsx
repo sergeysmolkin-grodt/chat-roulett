@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import NavBar from "@/components/NavBar";
 import { Users, UserPlus, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
-import { getFriends, getPendingFriendRequests, acceptFriendRequest, rejectOrRemoveFriend, searchUsers } from '@/services/apiService';
+import { getFriends, getPendingFriendRequests, acceptFriendRequest, rejectOrRemoveFriend, searchUsers, sendFriendRequest } from '@/services/apiService';
 import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 

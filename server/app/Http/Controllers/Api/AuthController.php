@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
@@ -15,14 +16,36 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'username' => [
+                'nullable',
+                'string',
+                'max:255',
+                'alpha_dash', // Позволяет буквы, цифры, тире и подчеркивания
+                Rule::unique('users', 'username')
+            ],
             'email' => 'required|string|email|max:255|unique:users',
             'password' => ['required', 'confirmed', Password::defaults()],
-            'gender' => 'required|string|in:male,female,other', // Added gender validation
+            'gender' => 'required|string|in:male,female,other',
+        ], [
+            'username.unique' => 'Этот никнейм уже занят.',
+            'username.alpha_dash' => 'Никнейм может содержать только буквы, цифры, тире и подчеркивания.',
         ]);
 
+        // Хотя бы одно из полей name или username должно быть заполнено
+        if (empty($validatedData['name']) && empty($validatedData['username'])) {
+            return response()->json([
+                'message' => 'The name or username field is required when neither is present.',
+                'errors' => [
+                    'name' => ['Укажите имя или никнейм.'],
+                    'username' => ['Укажите имя или никнейм.']
+                ]
+            ], 422);
+        }
+
         $user = User::create([
-            'name' => $validatedData['name'],
+            'name' => $validatedData['name'] ?? null,
+            'username' => $validatedData['username'] ?? null,
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
             'gender' => $validatedData['gender'],
@@ -71,13 +94,34 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'username' => [
+                'nullable',
+                'string',
+                'max:255',
+                'alpha_dash',
+                Rule::unique('users', 'username')->ignore($user->id)
+            ],
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'gender' => 'required|in:male,female,other',
             'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'username.unique' => 'Этот никнейм уже занят.',
+            'username.alpha_dash' => 'Никнейм может содержать только буквы, цифры, тире и подчеркивания.',
         ]);
+        
+        if (empty($validated['name']) && empty($validated['username'])) {
+             return response()->json([
+                'message' => 'The name or username field is required when neither is present.',
+                'errors' => [
+                    'name' => ['Укажите имя или никнейм.'],
+                    'username' => ['Укажите имя или никнейм.']
+                ]
+            ], 422);
+        }
 
-        $user->name = $validated['name'];
+        $user->name = $validated['name'] ?? null;
+        $user->username = $validated['username'] ?? null;
         $user->email = $validated['email'];
         $user->gender = $validated['gender'];
         if (!empty($validated['password'])) {

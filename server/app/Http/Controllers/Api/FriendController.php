@@ -7,6 +7,7 @@ use App\Models\Friendship;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class FriendController extends Controller
 {
@@ -111,20 +112,26 @@ class FriendController extends Controller
     public function searchUsers(Request $request)
     {
         $searchTerm = $request->input('term');
-        $currentUser = Auth::user();
+        // $currentUser = Auth::user(); // Временно уберем для теста
 
-        if (!$searchTerm) {
+        if (!$searchTerm || strlen($searchTerm) < 2) {
             return response()->json([], 200);
         }
 
-        $users = User::where('id', '!= ', $currentUser->id) // Не искать самого себя
-                       ->where(function ($query) use ($searchTerm) {
-                           $query->where('name', 'like', "%$searchTerm%")
-                                 ->orWhere('email', 'like', "%$searchTerm%");
-                       })
-                       ->select('id', 'name', 'email', 'avatar_url') // Возвращаем только нужные поля
-                       ->take(10) // Ограничение результатов
+        // Временный упрощенный запрос для диагностики
+        $users = User::where('username', 'like', "%$searchTerm%")
+                       // ->orWhere('name', 'like', "%$searchTerm%") // Временно уберем
+                       // ->orWhere('email', 'like', "%$searchTerm%") // Временно уберем
+                       // ->where('id', '!= ', $currentUser->id) // Временно уберем
+                       ->select('id', 'name', 'username', 'email', 'avatar_url')
+                       ->take(10)
                        ->get();
+
+        // Для отладки можно вернуть сам SQL-запрос и его параметры
+        // \Illuminate\Support\Facades\DB::enableQueryLog();
+        // $users = User::where('username', 'like', "%$searchTerm%")->select('id', 'name', 'username')->get();
+        // $queryLog = \Illuminate\Support\Facades\DB::getQueryLog();
+        // return response()->json(['users' => $users, 'query_log' => $queryLog]);
 
         return response()->json($users);
     }
