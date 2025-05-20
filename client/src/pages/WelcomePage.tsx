@@ -36,6 +36,12 @@ const WelcomePage = () => {
               Get Premium
             </Button>
           </Link>
+          
+          <Link to="/login">
+            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-3 px-8 rounded-lg text-lg">
+              Login
+            </Button>
+          </Link>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -53,6 +59,15 @@ const WelcomePage = () => {
             <h3 className="text-white text-lg font-medium mb-2">Instant Connections</h3>
             <p className="text-gray-400">Premium users get instant matches with real people.</p>
           </div>
+        </div>
+        
+        <div className="mb-8">
+          <p className="text-gray-300 mb-4">New to our platform?</p>
+          <Link to="/register">
+            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-2 px-6 rounded-lg">
+              Register Now
+            </Button>
+          </Link>
         </div>
         
         <h2 className="text-2xl font-semibold text-white mb-4">Get Our Mobile App</h2>
