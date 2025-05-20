@@ -21,7 +21,7 @@ interface AuthResponse {
 }
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8000/api', // Наш Laravel API
+  baseURL: 'http://localhost:8081/api', // Наш Laravel API
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
@@ -44,7 +44,7 @@ const apiService = {
     return apiClient.post<AuthResponse>('/register', userData);
   },
   login(credentials: Record<string, any>) { // Типизируйте credentials более строго
-    return apiClient.post<AuthResponse>('/login', credentials);
+    return apiClient.post<AuthResponse>('login', credentials);
   },
   logout() {
     return apiClient.post<void>('/logout'); // Предполагаем, что logout не возвращает тело

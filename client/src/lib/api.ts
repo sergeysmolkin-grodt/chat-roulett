@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api', // Your Laravel backend URL
+  baseURL: import.meta.env.VITE_API_URL, // Your Laravel backend URL
   withCredentials: true, // Important for Sanctum
   headers: {
     'Accept': 'application/json',
@@ -31,7 +31,7 @@ apiClient.interceptors.request.use(
 export const getCsrfCookie = async () => {
   try {
     console.log('[API getCsrfCookie] Attempting to fetch CSRF cookie...');
-    await axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+    await axios.get('http://localhost:8081/sanctum/csrf-cookie', {
       withCredentials: true,
     });
     console.log('[API getCsrfCookie] CSRF cookie fetched successfully.');
