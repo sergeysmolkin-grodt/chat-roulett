@@ -18,6 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->enum('gender', ['male', 'female', 'other']);
+            $table->string('avatar_url')->nullable();
             $table->boolean('is_searching_for_partner')->default(false);
             $table->timestamp('searching_started_at')->nullable();
             $table->rememberToken();

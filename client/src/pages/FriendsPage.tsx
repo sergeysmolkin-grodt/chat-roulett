@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import NavBar from "@/components/NavBar";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
 
 const FriendsPage = () => {
   // Демо-данные для списка друзей
@@ -72,7 +71,8 @@ const FriendsPage = () => {
             <Users className="text-rulet-purple" />
             <h1 className="text-xl font-bold">Друзья</h1>
           </div>
-          <Button variant="outline" className="border-rulet-purple text-rulet-purple">
+          <Button variant="outline" className="border-rulet-purple text-rulet-purple flex items-center gap-2">
+            <UserPlus className="w-5 h-5" />
             Добавить друга
           </Button>
         </div>

@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   gender: 'male' | 'female' | 'other';
+  avatar_url?: string | null;
   // добавь другие поля пользователя, если они есть
   // Например, для Stripe:
   // stripe_customer_id?: string | null;

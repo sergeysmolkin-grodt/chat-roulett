@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import NavBar from "@/components/NavBar";
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/services/apiService';
+import { Link } from 'react-router-dom';
+import { User as UserIcon } from 'lucide-react';
 
 const UserSettingsPage = () => {
   const { toast } = useToast();
@@ -20,6 +22,9 @@ const UserSettingsPage = () => {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +71,54 @@ const UserSettingsPage = () => {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setAvatarFile(file);
+    setAvatarUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const res = await apiService.post('/user/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAvatarUrl(res.data.avatar_url);
+      await fetchUser();
+      toast({ title: 'Аватар обновлен', description: 'Ваш аватар успешно загружен.' });
+    } catch (err: any) {
+      let msg = 'Ошибка при загрузке аватара';
+      if (err.response && err.response.data && err.response.data.errors) {
+        msg = Object.values(err.response.data.errors).flat().join(' ');
+      } else if (err.response && err.response.data && err.response.data.message) {
+        msg = err.response.data.message;
+      }
+      setError(msg);
+      toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // Функция для получения абсолютного URL аватара
+  const getAvatarUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    // Если путь относительный (например, /storage/...), добавляем базовый адрес API
+    return `http://localhost:8081${url}`;
+  };
+
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center bg-rulet-dark text-white">Загрузка...</div>;
   }
 
   return (
     <div className="min-h-screen bg-rulet-dark text-white pb-24">
+      <Link to="/profile" className="fixed top-6 right-8 z-30">
+        <div className="w-12 h-12 rounded-full bg-rulet-purple flex items-center justify-center shadow-lg hover:scale-105 transition-transform border-2 border-rulet-purple/60">
+          <UserIcon className="text-white" size={28} />
+        </div>
+      </Link>
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold">Настройки</h1>
@@ -100,6 +147,20 @@ const UserSettingsPage = () => {
                 <Input id="email" value={user.email} readOnly className="bg-black/60 border-rulet-purple/30 text-white" />
                 <p className="text-xs text-gray-400">Email изменить нельзя</p>
               </div>
+              <div className="space-y-2 flex flex-col items-center">
+                <div className="w-24 h-24 rounded-full bg-rulet-purple/30 flex items-center justify-center overflow-hidden mb-2 border-2 border-rulet-purple/60">
+                  {avatarUrl ? (
+                    <img src={getAvatarUrl(avatarUrl)} alt="avatar" className="object-cover w-full h-full" />
+                  ) : (
+                    <UserIcon className="text-rulet-purple" size={48} />
+                  )}
+                </div>
+                <label className="block">
+                  <span className="sr-only">Выберите аватар</span>
+                  <input type="file" accept="image/*" onChange={handleAvatarChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-rulet-purple/20 file:text-rulet-purple hover:file:bg-rulet-purple/40" disabled={avatarUploading} />
+                </label>
+                {avatarUploading && <div className="text-xs text-gray-400 mt-1">Загрузка...</div>}
+              </div>
             </CardContent>
           </Card>
           <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
@@ -124,7 +185,7 @@ const UserSettingsPage = () => {
         </form>
       </div>
       
-      <NavBar isPremium={true} />
+      <NavBar />
     </div>
   );
 };

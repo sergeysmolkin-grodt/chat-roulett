@@ -33,4 +33,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/stop-search', [ChatController::class, 'stopSearch']);
 
     Route::put('/user', [AuthController::class, 'update']);
+
+    Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
 }); 

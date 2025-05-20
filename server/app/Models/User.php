@@ -30,6 +30,7 @@ class User extends Authenticatable
         'subscription_ends_at',
         'is_searching_for_partner',
         'searching_started_at',
+        'avatar_url',
     ];
 
     /**

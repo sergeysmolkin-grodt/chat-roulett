@@ -17,6 +17,7 @@ import { useAuth } from "./contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
 import NavBar from "./components/NavBar";
 import { useEffect } from "react";
+import { User as UserIcon } from 'lucide-react';
 
 const PaymentSuccessPage = () => {
   const { refreshUser, isLoading } = useAuth();
@@ -91,12 +92,31 @@ const App = () => {
     return <div className="min-h-screen flex items-center justify-center bg-rulet-dark"><Progress value={33} className="w-1/2" /></div>;
   }
 
+  // Функция для получения абсолютного URL аватара
+  const getAvatarUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `http://localhost:8081${url}`;
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <div className="flex flex-col min-h-screen bg-rulet-dark">
+          {/* Иконка профиля или аватар в правом верхнем углу для всех страниц */}
+          {isAuthenticated && (
+            <RouterLink to="/profile" className="fixed top-6 right-24 z-30">
+              <div className="w-12 h-12 rounded-full bg-rulet-purple flex items-center justify-center shadow-lg hover:scale-105 transition-transform border-2 border-rulet-purple/60 overflow-hidden">
+                {user?.avatar_url ? (
+                  <img src={getAvatarUrl(user.avatar_url)} alt="avatar" className="object-cover w-full h-full" />
+                ) : (
+                  <UserIcon className="text-white" size={28} />
+                )}
+              </div>
+            </RouterLink>
+          )}
           <main className="flex-grow">
             <Routes>
               <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />
