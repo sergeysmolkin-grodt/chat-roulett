@@ -48,4 +48,18 @@ export const acceptFriendRequest = (friendshipId: number) => apiService.post(`/f
 export const rejectOrRemoveFriend = (friendUserId: number) => apiService.post(`/friends/reject-remove/${friendUserId}`);
 export const searchUsers = (term: string) => apiService.get('/users/search', { params: { term } });
 
+// Обновление профиля пользователя
+export const updateUserProfile = (data: Partial<{
+  name: string;
+  username: string;
+  email: string;
+  gender: string;
+  password?: string;
+  password_confirmation?: string;
+  city?: string;
+  age?: number;
+  bio?: string;
+  interests?: string[];
+}>) => apiService.put('/user', data);
+
 export default apiService; 

@@ -7,6 +7,13 @@ export interface User {
   email: string;
   gender: 'male' | 'female' | 'other';
   avatar_url?: string | null;
+  username?: string | null;
+  city?: string | null;
+  age?: number | null;
+  bio?: string | null;
+  interests?: string[];
+  created_at?: string;
+  subscription_status?: string | null;
   // добавь другие поля пользователя, если они есть
   // Например, для Stripe:
   // stripe_customer_id?: string | null;

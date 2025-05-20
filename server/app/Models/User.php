@@ -35,6 +35,10 @@ class User extends Authenticatable
         'searching_started_at',
         'avatar_url',
         'last_seen_at',
+        'city',
+        'age',
+        'bio',
+        'interests',
     ];
 
     /**
@@ -62,6 +66,7 @@ class User extends Authenticatable
             'is_searching_for_partner' => 'boolean',
             'searching_started_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'interests' => 'array',
         ];
     }
 
