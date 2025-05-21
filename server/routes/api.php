@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\VideoSignalingController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\FriendController;
 use Illuminate\Support\Facades\Broadcast;
+use App\Http\Controllers\Api\CategoryController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -47,4 +48,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/accept-request/{friendship}', [FriendController::class, 'acceptRequest']);
     Route::post('/friends/reject-remove/{friendUser}', [FriendController::class, 'rejectOrRemoveFriend']);
     Route::get('/users/search', [FriendController::class, 'searchUsers']);
+
+    // Category routes
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::post('/categories', [CategoryController::class, 'store']);
 }); 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, MessageCircle, Store, Settings, Star, LogOut } from 'lucide-react';
+import { Users, MessageCircle, Store, Settings, Star, LogOut, Home } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 
@@ -17,7 +17,7 @@ const NavBar = () => {
   };
   
   const isActive = (path: string) => {
-    return location.pathname === path;
+    return location.pathname === path || (path === '/categories' && location.pathname.startsWith('/categories'));
   };
   
   if (!isAuthenticated) {
@@ -29,6 +29,11 @@ const NavBar = () => {
       <Link to="/chat" className={`nav-button ${isActive('/chat') ? 'active' : ''}`}>
         <MessageCircle size={20} className="mb-0.5 sm:mb-1" />
         <span className="text-xs sm:text-sm">Chat</span>
+      </Link>
+      
+      <Link to="/categories" className={`nav-button ${isActive('/categories') ? 'active' : ''}`}>
+        <Home size={20} className="mb-0.5 sm:mb-1" />
+        <span className="text-xs sm:text-sm">Rooms</span>
       </Link>
       
       <Link to="/friends" className={`nav-button ${isActive('/friends') ? 'active' : ''}`}>

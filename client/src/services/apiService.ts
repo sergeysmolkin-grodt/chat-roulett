@@ -52,6 +52,10 @@ export const searchUsers = (term: string) => apiService.get('/users/search', { p
 export const findPartner = () => apiService.post('/chat/find-partner');
 export const stopSearch = () => apiService.post('/chat/stop-search');
 
+// Categories
+export const getCategories = () => apiService.get('/categories');
+export const createCategory = (data: { name: string; description?: string }) => apiService.post('/categories', data);
+
 // Обновление профиля пользователя
 export const updateUserProfile = (data: Partial<{
   name: string;
