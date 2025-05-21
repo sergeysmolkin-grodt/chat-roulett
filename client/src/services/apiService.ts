@@ -48,6 +48,10 @@ export const acceptFriendRequest = (friendshipId: number) => apiService.post(`/f
 export const rejectOrRemoveFriend = (friendUserId: number) => apiService.post(`/friends/reject-remove/${friendUserId}`);
 export const searchUsers = (term: string) => apiService.get('/users/search', { params: { term } });
 
+// Video Chat
+export const findPartner = () => apiService.post('/chat/find-partner');
+export const stopSearch = () => apiService.post('/chat/stop-search');
+
 // Обновление профиля пользователя
 export const updateUserProfile = (data: Partial<{
   name: string;
