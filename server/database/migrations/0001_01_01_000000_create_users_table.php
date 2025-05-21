@@ -21,6 +21,9 @@ return new class extends Migration
             $table->string('avatar_url')->nullable();
             $table->boolean('is_searching_for_partner')->default(false);
             $table->timestamp('searching_started_at')->nullable();
+            $table->integer('total_calls')->default(0)->after('interests'); // Или после другого удобного поля
+            $table->timestamp('first_conversation_at')->nullable()->after('total_calls');
+
             $table->rememberToken();
             $table->timestamps();
         });

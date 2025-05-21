@@ -204,11 +204,11 @@ const ShopPage = () => {
                     {t('shopPage.premiumTab.activatePremiumDescription')}
                   </p>
                 </div>
-                <div className="flex flex-col lg:flex-row gap-6 justify-center items-start">
+                <div className="flex flex-col lg:flex-row gap-6 justify-center items-start mb-8">
                   <Card key={antiskipProduct.id} className={`border border-rulet-purple/50 ${antiskipProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
                     <CardHeader className="pb-3 pt-4">
                       <CardTitle className="text-xl">{antiskipProduct.name}</CardTitle>
-                       <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
+                      <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
                       <div className="flex items-end gap-1 mt-1">
                         <span className="text-2xl font-bold">{antiskipProduct.price}</span>
                       </div>
@@ -232,47 +232,6 @@ const ShopPage = () => {
                       </Button>
                     </CardFooter>
                   </Card>
-
-                  {premiumPlans.map(plan => (
-                    <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
-                      {plan.popular && (
-                        <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
-                          {t('shopPage.premiumTab.popularBadge')}
-                        </div>
-                      )}
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                          <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
-                        </div>
-                        <div className="flex items-end gap-1 mt-2">
-                          <span className="text-3xl font-bold">{plan.price}</span>
-                          <span className="text-base opacity-80">{plan.period}</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pb-6 flex-grow">
-                        <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
-                        <ul className="space-y-2 mb-6">
-                          {plan.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-center gap-2">
-                              <ThumbsUp className="w-5 h-5 text-green-400" />
-                              <span className="text-base">{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                      <CardFooter className="p-6 bg-black/20">
-                        <Button 
-                          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
-                          onClick={() => handleInitiateSubscription(plan.id)}
-                          disabled={isLoadingCheckout}
-                        >
-                          {isLoadingCheckout ? t('shopPage.premiumTab.processingButton') : t('shopPage.premiumTab.premiumPlan.activateButton')}
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-
                   <Card key={accessoriesProduct.id} className={`border border-pink-400/60 ${accessoriesProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
                     <CardHeader className="pb-3 pt-4">
                       <CardTitle className="text-xl">{accessoriesProduct.name}</CardTitle>
@@ -307,22 +266,25 @@ const ShopPage = () => {
               </>
             )}
             
-            <div className="text-center my-16">
-              <h2 className="text-2xl font-semibold text-white mb-8">{t('shopPage.premiumTab.whyPremiumTitle')}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {whyPremiumFeatures.map((item, index) => (
-                  <div key={index} className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
-                    <div className="text-rulet-purple text-4xl mb-4">
-                      {index === 0 && <Zap className="w-12 h-12 mx-auto" />}
-                      {index === 1 && <ShieldCheck className="w-12 h-12 mx-auto" />}
-                      {index === 2 && <Sparkles className="w-12 h-12 mx-auto" />}
+            {/* Why Premium section: показывать только если не женщина */}
+            {!isFemale && (
+              <div className="text-center my-16">
+                <h2 className="text-2xl font-semibold text-white mb-8">{t('shopPage.premiumTab.whyPremiumTitle')}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {whyPremiumFeatures.map((item, index) => (
+                    <div key={index} className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
+                      <div className="text-rulet-purple text-4xl mb-4">
+                        {index === 0 && <Zap className="w-12 h-12 mx-auto" />}
+                        {index === 1 && <ShieldCheck className="w-12 h-12 mx-auto" />}
+                        {index === 2 && <Sparkles className="w-12 h-12 mx-auto" />}
+                      </div>
+                      <h3 className="text-white text-lg font-medium mb-2">{item.title}</h3>
+                      <p className="text-gray-400">{item.description}</p>
                     </div>
-                    <h3 className="text-white text-lg font-medium mb-2">{item.title}</h3>
-                    <p className="text-gray-400">{item.description}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </TabsContent>
           
           <TabsContent value="accessories" className="space-y-4">
