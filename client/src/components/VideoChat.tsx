@@ -215,7 +215,7 @@ const VideoChat = () => {
       <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-4">
         <Button
           onClick={toggleMute}
-          disabled={!localStream || isCallActive}
+          disabled={!localStream}
           className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
             isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
           }`}
@@ -257,7 +257,7 @@ const VideoChat = () => {
 
         <Button
           onClick={toggleCamera}
-          disabled={!localStream || isCallActive}
+          disabled={!localStream}
           className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
             isCameraOff ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
           }`}
