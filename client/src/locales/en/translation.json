@@ -269,6 +269,12 @@
       "male": "Male",
       "female": "Female",
       "other": "Other"
+    },
+    "statsTitle": "Statistics",
+    "stats": {
+      "calls": "Calls:",
+      "friends": "Friends:",
+      "firstCall": "First call date:"
     }
   }
 } 

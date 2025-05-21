@@ -39,6 +39,8 @@ class User extends Authenticatable
         'age',
         'bio',
         'interests',
+        'total_calls',
+        'first_conversation_at',
     ];
 
     /**
@@ -67,6 +69,8 @@ class User extends Authenticatable
             'searching_started_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'interests' => 'array',
+            'total_calls' => 'integer',
+            'first_conversation_at' => 'datetime',
         ];
     }
 
@@ -121,5 +125,12 @@ class User extends Authenticatable
     public function getAllFriends()
     {
         return $this->friends->merge($this->friendOf);
+    }
+
+    protected $appends = ['total_friends'];
+
+    public function getTotalFriendsAttribute(): int
+    {
+        return $this->friends()->count() + $this->friendOf()->count();
     }
 }

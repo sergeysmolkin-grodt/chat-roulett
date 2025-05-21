@@ -270,6 +270,12 @@
       "other": "Другое"
     },
     "changeAvatar": "Сменить аватар",
-    "deleteAvatar": "Удалить аватар"
+    "deleteAvatar": "Удалить аватар",
+    "statsTitle": "Статистика",
+    "stats": {
+      "calls": "Звонки:",
+      "friends": "Друзья:",
+      "firstCall": "Дата первого звонка:"
+    }
   }
 } 

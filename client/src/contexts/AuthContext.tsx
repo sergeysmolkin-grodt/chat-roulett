@@ -15,6 +15,9 @@ export interface User {
   created_at?: string;
   subscription_status?: string | null;
   subscription_ends_at?: string | null;
+  total_calls?: number;
+  total_friends?: number;
+  first_conversation_at?: string | null;
   // добавь другие поля пользователя, если они есть
   // Например, для Stripe:
   // stripe_customer_id?: string | null;

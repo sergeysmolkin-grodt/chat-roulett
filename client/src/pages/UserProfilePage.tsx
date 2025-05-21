@@ -320,23 +320,23 @@ const UserProfilePage = () => {
             </div>
           </CardContent>
         </Card>
-        {/* Статистика — пока статично, позже интегрировать */}
+        {/* Статистика — теперь динамическая */}
         <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-white">Статистика</CardTitle>
+            <CardTitle className="text-lg text-white">{t('profilePage.statsTitle') || 'Статистика'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-400">Звонки:</span>
-              <span>—</span>
+              <span className="text-gray-400">{t('profilePage.stats.calls') || 'Звонки:'}</span>
+              <span>{user.total_calls ?? 0}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Друзья:</span>
-              <span>—</span>
+              <span className="text-gray-400">{t('profilePage.stats.friends') || 'Друзья:'}</span>
+              <span>{user.total_friends ?? 0}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Время в приложении:</span>
-              <span>—</span>
+              <span className="text-gray-400">{t('profilePage.stats.firstCall') || 'Дата первого звонка:'}</span>
+              <span>{user.first_conversation_at ? format(new Date(user.first_conversation_at), 'dd.MM.yyyy HH:mm') : '—'}</span>
             </div>
           </CardContent>
         </Card>

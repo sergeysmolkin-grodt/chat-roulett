@@ -10,6 +10,7 @@ use App\Events\VideoChat\AnswerMade;
 use App\Events\VideoChat\IceCandidateSent;
 use App\Events\VideoChat\CallEnded;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 class VideoSignalingController extends Controller
 {
@@ -37,14 +38,40 @@ class VideoSignalingController extends Controller
             'answer' => 'required',
         ]);
 
+        $callerId = Auth::id();
+
         Log::info('Sending answer', [
-            'from' => Auth::id(),
+            'from' => $callerId,
             'to' => $targetUserId,
             'answer' => $validated['answer'],
         ]);
 
-        broadcast(new AnswerMade($validated['answer'], Auth::id(), $targetUserId))
+        broadcast(new AnswerMade($validated['answer'], $callerId, $targetUserId))
             ->toOthers();
+
+        // Обновление статистики
+        $caller = User::find($callerId);
+        $receiver = User::find($targetUserId);
+
+        if ($caller && $receiver) {
+            // Обновляем звонящего (кто отправил answer)
+            $caller->increment('total_calls');
+            if (!$caller->first_conversation_at) {
+                $caller->first_conversation_at = now();
+            }
+            $caller->save();
+
+            // Обновляем принимающего (кому изначально был offer)
+            $receiver->increment('total_calls');
+            if (!$receiver->first_conversation_at) {
+                $receiver->first_conversation_at = now();
+            }
+            $receiver->save();
+
+            Log::info('Call statistics updated for users', ['user1' => $callerId, 'user2' => $targetUserId]);
+        } else {
+            Log::warning('Could not find users to update call statistics', ['caller_id' => $callerId, 'receiver_id' => $targetUserId]);
+        }
 
         return response()->json(['message' => 'Answer sent']);
     }
