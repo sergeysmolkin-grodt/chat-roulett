@@ -139,9 +139,60 @@ const ShopPage = () => {
   const isSubscribed = isAuthenticated && user && user.subscription_status === 'active';
   const isFemale = isAuthenticated && user && user.gender === 'female';
 
+  const antiskipProduct = {
+    id: 101,
+    name: "Антискип",
+    price: "149 ₽",
+    description: "Никогда больше не пропускайте интересного собеседника!",
+    features: [
+      "Отключает случайный пропуск",
+      "Больше контроля над чатом",
+      "Действует 24 часа"
+    ],
+    color: "bg-gradient-to-br from-slate-700 to-slate-800",
+  };
+
+  const accessoriesProduct = {
+    id: 102,
+    name: "Все аксессуары",
+    price: "399 ₽",
+    description: "Получите полный набор эксклюзивных аксессуаров для персонализации профиля и чата!",
+    features: [
+      "Премиум аватары",
+      "Анимированные эффекты",
+      "Набор стикеров",
+      "Золотая рамка профиля"
+    ],
+    color: "bg-gradient-to-br from-pink-500/80 to-rose-600/80",
+  };
+
+  const handlePurchaseAntiskip = async () => {
+    if (!user) {
+      toast({ title: "Ошибка", description: "Пожалуйста, войдите в аккаунт.", variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Покупка Антискипа",
+      description: "Функционал покупки Антискипа в разработке.",
+      variant: "default"
+    });
+  };
+
+  const handlePurchaseAccessories = async () => {
+    if (!user) {
+      toast({ title: "Ошибка", description: "Пожалуйста, войдите в аккаунт.", variant: "destructive" });
+      return;
+    }
+    toast({
+      title: "Покупка аксессуаров",
+      description: "Функционал покупки полного набора аксессуаров в разработке.",
+      variant: "default"
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-rulet-dark text-white pb-24">
-      <div className="pt-6 px-4">
+    <div className="min-h-[120vh] bg-rulet-dark text-white pb-40 flex flex-col">
+      <div className="pt-6 px-4 flex-1">
         <div className="flex items-center gap-2 mb-6">
           <Store className="text-rulet-purple" />
           <h1 className="text-xl font-bold">Магазин</h1>
@@ -193,46 +244,104 @@ const ShopPage = () => {
                     Получите максимум от нашего сервиса с эксклюзивными возможностями.
                   </p>
                 </div>
-                {premiumPlans.filter(plan => plan.popular).map(plan => (
-                  <Card key={plan.id} className={`border-0 ${plan.color} text-white overflow-hidden relative flex flex-col max-w-lg mx-auto shadow-xl`}>
-                    {plan.popular && (
-                      <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
-                        Популярный
-                      </div>
-                    )}
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                        <Badge variant="outline" className="text-yellow-400 border-yellow-400">Рекомендовано</Badge>
-                      </div>
-                      <div className="flex items-end gap-1 mt-2">
-                        <span className="text-3xl font-bold">{plan.price}</span>
-                        <span className="text-base opacity-80">/ {plan.period}</span>
+                <div className="flex flex-col lg:flex-row gap-6 justify-center items-start">
+                  <Card key={antiskipProduct.id} className={`border border-rulet-purple/50 ${antiskipProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
+                    <CardHeader className="pb-3 pt-4">
+                      <CardTitle className="text-xl">{antiskipProduct.name}</CardTitle>
+                       <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
+                      <div className="flex items-end gap-1 mt-1">
+                        <span className="text-2xl font-bold">{antiskipProduct.price}</span>
                       </div>
                     </CardHeader>
-                    <CardContent className="pb-6 flex-grow">
-                      <p className="text-sm text-yellow-100/90 mb-4">Разблокируйте все возможности и общайтесь без ограничений!</p>
-                      <ul className="space-y-2 mb-6">
-                        {plan.features.map((feature, idx) => (
+                    <CardContent className="pb-4 flex-grow">
+                      <ul className="space-y-1.5 mb-4">
+                        {antiskipProduct.features.map((feature, idx) => (
                           <li key={idx} className="flex items-center gap-2">
-                            <ThumbsUp className="w-5 h-5 text-green-400" />
-                            <span className="text-base">{feature}</span>
+                            <ShieldCheck className="w-4 h-4 text-sky-400" />
+                            <span className="text-sm">{feature}</span>
                           </li>
                         ))}
                       </ul>
                     </CardContent>
-                    <CardFooter className="p-6 bg-black/20">
+                    <CardFooter className="p-4 bg-black/20">
                       <Button 
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
-                        onClick={() => handleInitiateSubscription(plan.id)}
-                        disabled={isLoadingCheckout}
+                        className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
+                        onClick={handlePurchaseAntiskip}
                       >
-                        {isLoadingCheckout ? "Обработка..." : `Активировать ${plan.name}`}
+                        Купить {antiskipProduct.name}
                       </Button>
                     </CardFooter>
                   </Card>
-                ))}
-                <div className="text-center text-sm text-gray-400 mt-6">
+
+                  {premiumPlans.filter(plan => plan.popular).map(plan => (
+                    <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
+                      {plan.popular && (
+                        <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+                          Популярный
+                        </div>
+                      )}
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                          <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">Рекомендовано</Badge>
+                        </div>
+                        <div className="flex items-end gap-1 mt-2">
+                          <span className="text-3xl font-bold">{plan.price}</span>
+                          <span className="text-base opacity-80">/ {plan.period}</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-6 flex-grow">
+                        <p className="text-sm text-yellow-100/90 mb-4">Разблокируйте все возможности и общайтесь без ограничений!</p>
+                        <ul className="space-y-2 mb-6">
+                          {plan.features.map((feature, idx) => (
+                            <li key={idx} className="flex items-center gap-2">
+                              <ThumbsUp className="w-5 h-5 text-green-400" />
+                              <span className="text-base">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                      <CardFooter className="p-6 bg-black/20">
+                        <Button 
+                          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
+                          onClick={() => handleInitiateSubscription(plan.id)}
+                          disabled={isLoadingCheckout}
+                        >
+                          {isLoadingCheckout ? "Обработка..." : `Активировать ${plan.name}`}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+
+                  <Card key={accessoriesProduct.id} className={`border border-pink-400/60 ${accessoriesProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
+                    <CardHeader className="pb-3 pt-4">
+                      <CardTitle className="text-xl">{accessoriesProduct.name}</CardTitle>
+                      <p className="text-sm text-gray-100">{accessoriesProduct.description}</p>
+                      <div className="flex items-end gap-1 mt-1">
+                        <span className="text-2xl font-bold">{accessoriesProduct.price}</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-4 flex-grow">
+                      <ul className="space-y-1.5 mb-4">
+                        {accessoriesProduct.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-pink-200" />
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter className="p-4 bg-black/20">
+                      <Button 
+                        className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 border-0 shadow-md" 
+                        onClick={handlePurchaseAccessories}
+                      >
+                        Купить аксессуары
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </div>
+                <div className="text-center text-sm text-gray-400 mt-8">
                   Отмена подписки в любое время. Безопасные платежи через Stripe.
                 </div>
               </>
