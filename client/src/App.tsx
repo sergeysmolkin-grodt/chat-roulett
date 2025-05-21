@@ -19,6 +19,7 @@ import WelcomePage from './pages/WelcomePage';
 import { Button } from './components/ui/button';
 import { Loader2 } from 'lucide-react';
 import apiService from './services/apiService';
+import { useTranslation } from 'react-i18next';
 
 const PaymentSuccessPage = () => {
   const { fetchUser } = useAuth();
@@ -60,6 +61,31 @@ const ProtectedRoute = () => {
   }
 
   return <Outlet />;
+};
+
+const LanguageSwitcher = () => {
+  const { i18n } = useTranslation();
+  const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
+  return (
+    <div className="fixed top-2 right-4 z-50 flex gap-1 bg-black/40 rounded-full px-2 py-1 shadow-lg">
+      <Button 
+        variant={i18n.language === 'ru' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('ru')} 
+        className="text-xs p-1 h-auto"
+      >
+        RU
+      </Button>
+      <Button 
+        variant={i18n.language === 'en' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('en')} 
+        className="text-xs p-1 h-auto"
+      >
+        EN
+      </Button>
+    </div>
+  );
 };
 
 const App = () => {
@@ -119,9 +145,12 @@ const App = () => {
 };
 
 const RootApp = () => (
-  <AuthProvider>
-    <App />
-  </AuthProvider>
+  <>
+    <LanguageSwitcher />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </>
 );
 
 export default RootApp;

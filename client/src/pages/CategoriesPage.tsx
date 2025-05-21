@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface CategoryUser {
   id: number;
@@ -35,6 +36,7 @@ const CategoriesPage = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchCategories();
@@ -49,8 +51,8 @@ const CategoriesPage = () => {
       console.error('Error fetching categories:', error);
       toast({
         variant: "destructive",
-        title: "Failed to load categories",
-        description: "Could not fetch the list of categories. Please try again later.",
+        title: t('roomsPage.loadErrorTitle'),
+        description: t('roomsPage.loadErrorDesc'),
       });
     } finally {
       setIsLoading(false);
@@ -62,8 +64,8 @@ const CategoriesPage = () => {
     if (!newCategoryName.trim()) {
       toast({
         variant: "destructive",
-        title: "Validation Error",
-        description: "Category name cannot be empty.",
+        title: t('roomsPage.validationError'),
+        description: t('roomsPage.validationError'),
       });
       return;
     }
@@ -73,10 +75,10 @@ const CategoriesPage = () => {
         name: newCategoryName,
         description: newCategoryDescription || undefined,
       });
-      setCategories(prev => [response.data, ...prev]); // Add to the beginning of the list
+      setCategories(prev => [response.data, ...prev]);
       toast({
-        title: "Category created",
-        description: `Category "${response.data.name}" has been successfully created.`,
+        title: t('roomsPage.createSuccessTitle'),
+        description: t('roomsPage.createSuccessDesc', { name: response.data.name }),
       });
       setNewCategoryName('');
       setNewCategoryDescription('');
@@ -85,8 +87,8 @@ const CategoriesPage = () => {
       console.error('Error creating category:', error);
       toast({
         variant: "destructive",
-        title: "Failed to create category",
-        description: error.response?.data?.message || "An unexpected error occurred.",
+        title: t('roomsPage.createErrorTitle'),
+        description: error.response?.data?.message || t('roomsPage.createErrorDesc'),
       });
     } finally {
       setIsSubmitting(false);
@@ -96,7 +98,7 @@ const CategoriesPage = () => {
   if (!isAuthenticated || !user) {
     return (
       <div className="container mx-auto p-4 text-center text-white">
-        <p>Please log in to view and create categories.</p>
+        <p>{t('roomsPage.notLoggedIn')}</p>
       </div>
     );
   }
@@ -104,52 +106,52 @@ const CategoriesPage = () => {
   return (
     <div className="container mx-auto p-4 text-white">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Chat Rooms</h1>
+        <h1 className="text-3xl font-bold">{t('roomsPage.title')}</h1>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-rulet-purple hover:bg-rulet-purple-dark">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Room
+              <PlusCircle className="mr-2 h-5 w-5" /> {t('roomsPage.addRoom')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px] bg-rulet-dark text-white border-rulet-chat-outline">
             <DialogHeader>
-              <DialogTitle>Create a new chat room</DialogTitle>
+              <DialogTitle>{t('roomsPage.addRoomDialogTitle')}</DialogTitle>
               <DialogDescription>
-                Fill in the details for your new chat room. Make it interesting!
+                {t('roomsPage.addRoomDialogDesc')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddCategory}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label htmlFor="name" className="text-right">
-                    Name
+                    {t('roomsPage.nameLabel')}
                   </label>
                   <Input
                     id="name"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple"
-                    placeholder="e.g., Music Lovers, Flirting Fun"
+                    placeholder={t('roomsPage.namePlaceholder')}
                     disabled={isSubmitting}
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <label htmlFor="description" className="text-right">
-                    Description
+                    {t('roomsPage.descLabel')}
                   </label>
                   <Textarea
                     id="description"
                     value={newCategoryDescription}
                     onChange={(e) => setNewCategoryDescription(e.target.value)}
                     className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple"
-                    placeholder="A short description of what this room is about (optional)"
+                    placeholder={t('roomsPage.descPlaceholder')}
                     disabled={isSubmitting}
                   />
                 </div>
               </div>
               <DialogFooter>
                 <Button type="submit" className="bg-rulet-purple hover:bg-rulet-purple-dark" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Create Room"}
+                  {isSubmitting ? t('roomsPage.creatingButton') : t('roomsPage.createButton')}
                 </Button>
               </DialogFooter>
             </form>
@@ -176,7 +178,7 @@ const CategoriesPage = () => {
             ))}
         </div>
       ) : categories.length === 0 ? (
-        <p className="text-center text-gray-400">No chat rooms available yet. Why not create one?</p>
+        <p className="text-center text-gray-400">{t('roomsPage.emptyList')}</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category) => (
@@ -184,18 +186,18 @@ const CategoriesPage = () => {
               <CardHeader>
                 <CardTitle className="text-xl text-rulet-purple">{category.name}</CardTitle>
                 <CardDescription className="text-gray-400">
-                  Created by: {category.user.username || category.user.name || 'Unknown User'}
+                  {t('roomsPage.createdBy')}: {category.user.username || category.user.name || 'Unknown User'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-300">
-                  {category.description || 'No description provided.'}
+                  {category.description || t('roomsPage.noDescription')}
                 </p>
               </CardContent>
               <CardFooter className="flex justify-between items-center">
                 {/* <p className="text-xs text-gray-500">0 people chatting</p>  Placeholder for active users */}
                 <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple hover:text-white">
-                  Join Room
+                  {t('roomsPage.joinButton')}
                 </Button>
               </CardFooter>
             </Card>

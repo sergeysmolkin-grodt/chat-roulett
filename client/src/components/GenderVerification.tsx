@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from 'react-i18next';
 
 interface GenderVerificationProps {
   stream: MediaStream | null;
@@ -15,6 +15,7 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
+  const { t } = useTranslation();
   
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -26,8 +27,8 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
     if (!stream) {
       toast({
         variant: "destructive",
-        title: "Camera Required",
-        description: "Please enable your camera to verify your gender.",
+        title: t('genderVerification.cameraRequiredTitle'),
+        description: t('genderVerification.cameraRequiredDesc'),
       });
       return;
     }
@@ -56,8 +57,8 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
     setTimeout(() => {
       setIsVerifying(false);
       toast({
-        title: "Verification Complete",
-        description: `You have been identified as ${randomGender}.`,
+        title: t('genderVerification.verificationCompleteTitle'),
+        description: t('genderVerification.verificationCompleteDesc', { gender: randomGender }),
       });
       onGenderVerified(randomGender as 'male' | 'female');
     }, 1000);
@@ -65,10 +66,9 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
 
   return (
     <div className="flex flex-col items-center justify-center p-6 bg-black/80 rounded-lg border border-rulet-purple/30 max-w-md mx-auto">
-      <h2 className="text-xl font-semibold text-white mb-4">Gender Verification</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">{t('genderVerification.title')}</h2>
       <p className="text-gray-300 text-center mb-6">
-        We need to verify your gender to provide the appropriate experience. 
-        Please ensure you're clearly visible in the camera.
+        {t('genderVerification.desc')}
       </p>
 
       <div className="relative w-64 h-64 rounded-lg overflow-hidden border-2 border-rulet-purple/50 mb-6">
@@ -82,7 +82,7 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
-            <p className="text-gray-400">Camera not available</p>
+            <p className="text-gray-400">{t('genderVerification.cameraNotAvailable')}</p>
           </div>
         )}
         
@@ -90,7 +90,7 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rulet-purple mb-2"></div>
-              <p className="text-white">Verifying... {progress}%</p>
+              <p className="text-white">{t('genderVerification.verifying', { progress })}</p>
             </div>
           </div>
         )}
@@ -102,7 +102,7 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
           className="bg-rulet-purple hover:bg-rulet-purple-dark text-white"
           disabled={!stream}
         >
-          Start Verification
+          {t('genderVerification.startButton')}
         </Button>
       ) : (
         <div className="w-full bg-gray-700 rounded-full h-2.5 mb-4">
@@ -111,7 +111,7 @@ const GenderVerification = ({ stream, onGenderVerified }: GenderVerificationProp
       )}
       
       <p className="text-xs text-gray-400 mt-4 text-center">
-        Our AI will continuously verify your gender during the session to maintain platform integrity.
+        {t('genderVerification.aiNote')}
       </p>
     </div>
   );

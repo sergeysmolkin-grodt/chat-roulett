@@ -12,10 +12,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/services/apiService';
 import { Link } from 'react-router-dom';
 import { User as UserIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const UserSettingsPage = () => {
   const { toast } = useToast();
   const { user, fetchUser } = useAuth();
+  const { t } = useTranslation();
   const [name, setName] = useState(user?.name || '');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>(user?.gender || 'male');
   const [password, setPassword] = useState('');
@@ -38,7 +40,7 @@ const UserSettingsPage = () => {
       };
       if (password) {
         if (password !== passwordConfirm) {
-          setError('Пароли не совпадают');
+          setError(t('settingsPage.validation.passwordsDontMatch'));
           setSaving(false);
           return;
         }
@@ -48,13 +50,13 @@ const UserSettingsPage = () => {
       await apiService.put('/user', payload);
       await fetchUser();
       toast({
-        title: "Настройки сохранены",
-        description: "Ваши настройки успешно обновлены",
+        title: t('settingsPage.updateSuccess'),
+        description: t('settingsPage.updateSuccess'),
       });
       setPassword('');
       setPasswordConfirm('');
     } catch (err: any) {
-      let msg = 'Ошибка при сохранении настроек';
+      let msg = t('settingsPage.updateError');
       if (err.response && err.response.data && err.response.data.errors) {
         msg = Object.values(err.response.data.errors).flat().join(' ');
       } else if (err.response && err.response.data && err.response.data.message) {
@@ -62,7 +64,7 @@ const UserSettingsPage = () => {
       }
       setError(msg);
       toast({
-        title: "Ошибка",
+        title: t('settingsPage.updateError'),
         description: msg,
         variant: "destructive",
       });
@@ -85,16 +87,16 @@ const UserSettingsPage = () => {
       });
       setAvatarUrl(res.data.avatar_url);
       await fetchUser();
-      toast({ title: 'Аватар обновлен', description: 'Ваш аватар успешно загружен.' });
+      toast({ title: t('settingsPage.avatarUploadSuccess'), description: t('settingsPage.avatarUploadSuccess') });
     } catch (err: any) {
-      let msg = 'Ошибка при загрузке аватара';
+      let msg = t('settingsPage.avatarUploadError');
       if (err.response && err.response.data && err.response.data.errors) {
         msg = Object.values(err.response.data.errors).flat().join(' ');
       } else if (err.response && err.response.data && err.response.data.message) {
         msg = err.response.data.message;
       }
       setError(msg);
-      toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
+      toast({ title: t('settingsPage.avatarUploadError'), description: msg, variant: 'destructive' });
     } finally {
       setAvatarUploading(false);
     }
@@ -109,7 +111,7 @@ const UserSettingsPage = () => {
   };
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center bg-rulet-dark text-white">Загрузка...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-rulet-dark text-white">{t('settingsPage.loading', 'Loading...')}</div>;
   }
 
   return (
@@ -121,31 +123,31 @@ const UserSettingsPage = () => {
       </Link>
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold">Настройки</h1>
+          <h1 className="text-xl font-bold">{t('settingsPage.title')}</h1>
         </div>
         
         <form onSubmit={handleSave} className="space-y-6 max-w-lg mx-auto">
           <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-white">Личная информация</CardTitle>
+              <CardTitle className="text-lg text-white">{t('settingsPage.profileSection')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Имя</Label>
+                <Label htmlFor="name" className="text-white">{t('settingsPage.name')}</Label>
                 <Input id="name" value={name} onChange={e => setName(e.target.value)} className="bg-black/60 border-rulet-purple/30 text-white" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="gender" className="text-white">Пол</Label>
+                <Label htmlFor="gender" className="text-white">{t('settingsPage.gender')}</Label>
                 <select id="gender" value={gender} onChange={e => setGender(e.target.value as any)} className="bg-black/60 border-rulet-purple/30 text-white rounded p-2 w-full">
-                  <option value="male">Мужской</option>
-                  <option value="female">Женский</option>
-                  <option value="other">Другое</option>
+                  <option value="male">{t('settingsPage.genderOptions.male')}</option>
+                  <option value="female">{t('settingsPage.genderOptions.female')}</option>
+                  <option value="other">{t('settingsPage.genderOptions.other')}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email</Label>
+                <Label htmlFor="email" className="text-white">{t('settingsPage.email')}</Label>
                 <Input id="email" value={user.email} readOnly className="bg-black/60 border-rulet-purple/30 text-white" />
-                <p className="text-xs text-gray-400">Email изменить нельзя</p>
+                <p className="text-xs text-gray-400">{t('settingsPage.emailReadonly', 'Email cannot be changed')}</p>
               </div>
               <div className="space-y-2 flex flex-col items-center">
                 <div className="w-24 h-24 rounded-full bg-rulet-purple/30 flex items-center justify-center overflow-hidden mb-2 border-2 border-rulet-purple/60">
@@ -156,31 +158,31 @@ const UserSettingsPage = () => {
                   )}
                 </div>
                 <label className="block">
-                  <span className="sr-only">Выберите аватар</span>
+                  <span className="sr-only">{t('settingsPage.editAvatar')}</span>
                   <input type="file" accept="image/*" onChange={handleAvatarChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-rulet-purple/20 file:text-rulet-purple hover:file:bg-rulet-purple/40" disabled={avatarUploading} />
                 </label>
-                {avatarUploading && <div className="text-xs text-gray-400 mt-1">Загрузка...</div>}
+                {avatarUploading && <div className="text-xs text-gray-400 mt-1">{t('settingsPage.savingButton')}</div>}
               </div>
             </CardContent>
           </Card>
           <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg text-white">Смена пароля</CardTitle>
+              <CardTitle className="text-lg text-white">{t('settingsPage.passwordChangeSection', 'Change Password')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white">Новый пароль</Label>
+                <Label htmlFor="password" className="text-white">{t('settingsPage.newPassword')}</Label>
                 <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="bg-black/60 border-rulet-purple/30 text-white" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="passwordConfirm" className="text-white">Подтвердите пароль</Label>
+                <Label htmlFor="passwordConfirm" className="text-white">{t('settingsPage.passwordConfirm')}</Label>
                 <Input id="passwordConfirm" type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} className="bg-black/60 border-rulet-purple/30 text-white" />
               </div>
             </CardContent>
           </Card>
           {error && <div className="text-red-500 text-center">{error}</div>}
           <Button type="submit" disabled={saving} className="w-full bg-rulet-purple hover:bg-rulet-purple-dark">
-            {saving ? "Сохранение..." : "Сохранить настройки"}
+            {saving ? t('settingsPage.savingButton') : t('settingsPage.saveButton')}
           </Button>
         </form>
       </div>

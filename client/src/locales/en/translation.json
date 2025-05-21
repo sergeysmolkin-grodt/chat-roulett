@@ -1,0 +1,248 @@
+{
+  "greeting": "Hello, world!",
+  "nav": {
+    "chat": "Chat",
+    "rooms": "Rooms",
+    "friends": "Friends",
+    "shop": "Shop",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "shopPage": {
+    "title": "Shop",
+    "tabs": {
+      "premium": "Premium",
+      "accessoriesStore": "Accessories"
+    },
+    "premiumTab": {
+      "mainTitle": "Upgrade Your Experience",
+      "mainDescriptionFemale": "For you, access to the main chat features is free!",
+      "mainDescriptionSubscribed": "Thank you for your subscription! You are enjoying all premium benefits.",
+      "mainDescriptionDefault": "Get instant access to chat partners without queues. Premium users enjoy priority matching and enhanced features.",
+      "subscribedMessageTitle": "You have an active Premium subscription!",
+      "subscriptionEndsText": "Subscription ends on:",
+      "femaleAccessMessageTitle": "Free access for women!",
+      "femaleAccessMessageText": "Enjoy all the delights of communication without restrictions.",
+      "activatePremiumTitle": "Activate Premium Access",
+      "activatePremiumDescription": "Get the most out of our service with exclusive features.",
+      "popularBadge": "Popular",
+      "recommendedBadge": "Recommended",
+      "premiumPlan": {
+        "name": "Premium",
+        "priceSuffix": "/ month",
+        "unlockFeaturesText": "Unlock all features and chat without limits!",
+        "features": [
+          "All basic plan features",
+          "Unlimited friends",
+          "Advanced search filters",
+          "Priority support",
+          "Exclusive stickers and effects"
+        ],
+        "activateButton": "Activate Premium"
+      },
+      "antiskip": {
+        "name": "Anti-Skip",
+        "description": "Never miss an interesting chat partner again!",
+        "features": [
+          "Disables random skipping",
+          "More control over chat",
+          "Lasts 24 hours"
+        ],
+        "buyButton": "Buy Anti-Skip"
+      },
+      "allAccessories": {
+        "name": "All Accessories",
+        "description": "Get the full set of exclusive accessories to personalize your profile and chat!",
+        "features": [
+          "Premium avatars",
+          "Animated effects",
+          "Sticker pack",
+          "Golden profile frame"
+        ],
+        "buyButton": "Buy Accessories"
+      },
+      "cancellationPolicy": "Cancel your subscription at any time. Secure payments via Stripe.",
+      "processingButton": "Processing...",
+      "whyPremiumTitle": "Why Premium? (For Men)",
+      "whyPremiumFeatures": [
+        {
+          "title": "Instant Matching",
+          "description": "No more waiting - connect with girls instantly."
+        },
+        {
+          "title": "Verified Users",
+          "description": "Chat with verified users for an authentic experience."
+        },
+        {
+          "title": "Exclusive Features",
+          "description": "Enjoy additional features like friend lists and special badges."
+        }
+      ]
+    },
+    "accessoriesTab": {
+      "placeholderTag": "Bestseller",
+      "buyButton": "Buy"
+    },
+    "notifications": {
+      "loginErrorTitle": "Error",
+      "loginErrorDescription": "Please log in to your account.",
+      "subscriptionNotNeededTitle": "Subscription not required",
+      "subscriptionNotNeededDescription": "Access is provided free of charge for women.",
+      "subscriptionActiveTitle": "Subscription already active",
+      "subscriptionActiveDescription": "You already have an active premium subscription.",
+      "checkoutUrlError": "Failed to get URL for Stripe Checkout.",
+      "subscriptionErrorTitle": "Subscription Error",
+      "subscriptionErrorDescription": "Failed to initiate the subscription process. Please try again later.",
+      "antiskipPurchaseTitle": "Anti-Skip Purchase",
+      "antiskipPurchaseDescription": "Anti-Skip purchase functionality is under development.",
+      "allAccessoriesPurchaseTitle": "All Accessories Purchase",
+      "allAccessoriesPurchaseDescription": "Functionality to purchase all accessories is under development."
+    }
+  },
+  "roomsPage": {
+    "title": "Chat Rooms",
+    "addRoom": "Add New Room",
+    "addRoomDialogTitle": "Create a new chat room",
+    "addRoomDialogDesc": "Fill in the details for your new chat room. Make it interesting!",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g., Music Lovers, Flirting Fun",
+    "descLabel": "Description",
+    "descPlaceholder": "A short description of what this room is about (optional)",
+    "createButton": "Create Room",
+    "creatingButton": "Creating...",
+    "emptyList": "No chat rooms available yet. Why not create one?",
+    "notLoggedIn": "Please log in to view and create categories.",
+    "createdBy": "Created by",
+    "noDescription": "No description provided.",
+    "joinButton": "Join Room",
+    "validationError": "Category name cannot be empty.",
+    "loadErrorTitle": "Failed to load categories",
+    "loadErrorDesc": "Could not fetch the list of categories. Please try again later.",
+    "createSuccessTitle": "Category created",
+    "createSuccessDesc": "Category \"{{name}}\" has been successfully created.",
+    "createErrorTitle": "Failed to create category",
+    "createErrorDesc": "An unexpected error occurred."
+  },
+  "friendsPage": {
+    "title": "Friends",
+    "searchPlaceholder": "Search users by username...",
+    "addFriend": "Add Friend",
+    "pendingRequests": "Pending Requests",
+    "noFriends": "You have no friends yet.",
+    "noRequests": "No pending friend requests.",
+    "accept": "Accept",
+    "reject": "Reject",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "sendRequest": "Send Friend Request",
+    "requestSent": "Friend request sent!",
+    "alreadyFriends": "You are already friends with this user.",
+    "requestPending": "Friend request already pending.",
+    "cannotAddSelf": "You cannot add yourself as a friend.",
+    "userNotFound": "User not found.",
+    "error": "An error occurred. Please try again.",
+    "lastSeen": "Last seen:",
+    "online": "Online",
+    "offline": "Offline",
+    "actions": {
+      "acceptSuccess": "Friend request accepted.",
+      "rejectSuccess": "Friend request rejected.",
+      "removeSuccess": "Friend removed.",
+      "sendSuccess": "Friend request sent.",
+      "sendError": "Failed to send friend request.",
+      "acceptError": "Failed to accept friend request.",
+      "rejectError": "Failed to reject friend request.",
+      "removeError": "Failed to remove friend."
+    },
+    "loadingFriends": "Loading friends...",
+    "loadingRequests": "Loading requests...",
+    "retry": "Try again",
+    "noFriendsOnline": "No friends online.",
+    "videoChat": "Video Chat"
+  },
+  "settingsPage": {
+    "title": "Settings",
+    "profileSection": "Profile Information",
+    "name": "Name",
+    "username": "Username",
+    "email": "Email",
+    "gender": "Gender",
+    "city": "City",
+    "age": "Age",
+    "bio": "Bio",
+    "interests": "Interests",
+    "password": "Password",
+    "passwordConfirm": "Confirm Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "saveButton": "Save Changes",
+    "savingButton": "Saving...",
+    "editAvatar": "Edit Avatar",
+    "changeAvatar": "Change Avatar",
+    "avatarUploadError": "Failed to upload avatar.",
+    "avatarUploadSuccess": "Avatar updated successfully!",
+    "updateSuccess": "Profile updated successfully!",
+    "updateError": "Failed to update profile. Please try again.",
+    "validation": {
+      "nameRequired": "Name is required.",
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Invalid email address.",
+      "passwordsDontMatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 8 characters."
+    },
+    "genderOptions": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "addInterest": "Add interest",
+    "removeInterest": "Remove",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "emailReadonly": "Email cannot be changed",
+    "passwordChangeSection": "Change Password"
+  },
+  "chatPage": {
+    "title": "Video Chat",
+    "searchingPartner": "Searching for a partner...",
+    "connectingToUser": "Connecting to user {{userId}}...",
+    "noPartnerAvailable": "No one available right now.",
+    "enableCameraMic": "Enable your camera and microphone to start.",
+    "enableCameraMicButton": "Enable Camera & Mic",
+    "cameraOff": "Camera Off",
+    "micOff": "Microphone Off",
+    "micOn": "Microphone On",
+    "cameraOn": "Camera On",
+    "incomingCall": "Incoming call from User ID: {{userId}}",
+    "accept": "Accept",
+    "reject": "Reject",
+    "hangUp": "Hang Up",
+    "stopSearch": "Stop Search",
+    "next": "Next",
+    "joinRoom": "Join Room",
+    "leaveRoom": "Leave Room",
+    "chatPlaceholder": "Type a message...",
+    "send": "Send",
+    "partnerFound": "Partner found: {{userId}}. Connecting...",
+    "searching": "Searching... Click 'Stop Search' to cancel.",
+    "callingUser": "Calling User ID: {{userId}}...",
+    "clickNext": "Click 'Next' to find a chat partner or enter User ID above.",
+    "enableCameraToStart": "Enable camera to start.",
+    "loadingUser": "Loading user...",
+    "pleaseLogin": "Please log in to use the chat.",
+    "error": "An error occurred. Please try again.",
+    "fullscreenError": "Error attempting to enable fullscreen: {{error}}"
+  },
+  "genderVerification": {
+    "title": "Gender Verification",
+    "desc": "We need to verify your gender to provide the appropriate experience. Please ensure you're clearly visible in the camera.",
+    "cameraNotAvailable": "Camera not available",
+    "verifying": "Verifying... {{progress}}%",
+    "startButton": "Start Verification",
+    "aiNote": "Our AI will continuously verify your gender during the session to maintain platform integrity.",
+    "cameraRequiredTitle": "Camera Required",
+    "cameraRequiredDesc": "Please enable your camera to verify your gender.",
+    "verificationCompleteTitle": "Verification Complete",
+    "verificationCompleteDesc": "You have been identified as {{gender}}."
+  }
+} 

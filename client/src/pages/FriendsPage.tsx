@@ -12,6 +12,7 @@ import { getFriends, getPendingFriendRequests, acceptFriendRequest, rejectOrRemo
 import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 // Типы для данных с бэкенда
 interface UserProfile {
@@ -47,6 +48,7 @@ const FriendsPage = () => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { isUserOnline, onlineUsers } = useOnlineStatus();
+  const { t } = useTranslation();
 
   const [friendsList, setFriendsList] = useState<UserProfile[]>([]);
   const [pendingRequestsList, setPendingRequestsList] = useState<FriendRequest[]>([]);
@@ -75,8 +77,8 @@ const FriendsPage = () => {
       setFriendsList(friendsWithOnlineStatus);
     } catch (error) {
       console.error("Error fetching friends:", error);
-      setErrorFriends("Не удалось загрузить список друзей.");
-      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить список друзей." });
+      setErrorFriends(t('friendsPage.error'));
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: t('friendsPage.error') });
     } finally {
       setIsLoadingFriends(false);
     }
@@ -101,8 +103,8 @@ const FriendsPage = () => {
       setPendingRequestsList(response.data);
     } catch (error) {
       console.error("Error fetching pending requests:", error);
-      setErrorRequests("Не удалось загрузить запросы в друзья.");
-      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить запросы в друзья." });
+      setErrorRequests(t('friendsPage.error'));
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: t('friendsPage.error') });
     } finally {
       setIsLoadingRequests(false);
     }
@@ -119,42 +121,34 @@ const FriendsPage = () => {
   const handleAcceptRequest = async (friendshipId: number) => {
     try {
       await acceptFriendRequest(friendshipId);
-      toast({ title: "Успех", description: "Запрос в друзья принят." });
-      fetchPendingRequests(); // Обновить список запросов
-      fetchFriends(); // Обновить список друзей
+      toast({ title: t('friendsPage.actions.acceptSuccess') });
+      fetchPendingRequests();
+      fetchFriends();
     } catch (error) {
       console.error("Error accepting friend request:", error);
-      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось принять запрос." });
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: t('friendsPage.actions.acceptError') });
     }
   };
 
   const handleRejectRequest = async (friendshipId: number, friendUserIdToReject: number) => {
-    // Для отклонения запроса, который ЕЩЕ НЕ принят, мы удаляем запись Friendship.
-    // ID этой записи Friendship - это friendshipId.
-    // Однако наш бэкенд rejectOrRemoveFriend ожидает ID пользователя, с которым разрывается связь.
-    // В случае запроса, friendship.user.id - это тот, кто отправил запрос.
-    // friendship.friend_id - это текущий пользователь.
-    // Мы должны удалить запись о дружбе.
-    // Так как rejectOrRemoveFriend работает с User ID, нам нужно передать ID пользователя,
-    // который отправил запрос (это user.id из объекта запроса, или friendship.user_id из данных запроса)
     try {
-      await rejectOrRemoveFriend(friendUserIdToReject); // Передаем ID пользователя, чей запрос отклоняем
-      toast({ title: "Успех", description: "Запрос в друзья отклонен." });
-      fetchPendingRequests(); // Обновить список запросов
+      await rejectOrRemoveFriend(friendUserIdToReject);
+      toast({ title: t('friendsPage.actions.rejectSuccess') });
+      fetchPendingRequests();
     } catch (error) {
       console.error("Error rejecting friend request:", error);
-      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось отклонить запрос." });
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: t('friendsPage.actions.rejectError') });
     }
   };
   
   const handleRemoveFriend = async (friendUserId: number) => {
     try {
       await rejectOrRemoveFriend(friendUserId);
-      toast({ title: "Успех", description: "Пользователь удален из друзей." });
-      fetchFriends(); // Обновить список друзей
+      toast({ title: t('friendsPage.actions.removeSuccess') });
+      fetchFriends();
     } catch (error) {
       console.error("Error removing friend:", error);
-      toast({ variant: "destructive", title: "Ошибка", description: "Не удалось удалить друга." });
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: t('friendsPage.actions.removeError') });
     }
   };
   
@@ -171,7 +165,7 @@ const FriendsPage = () => {
       setSearchResults(response.data);
     } catch (error) {
       console.error("Error searching users:", error);
-      setSearchError("Ошибка при поиске пользователей.");
+      setSearchError(t('friendsPage.error'));
       setSearchResults([]);
     } finally {
       setIsSearchingUsers(false);
@@ -181,14 +175,12 @@ const FriendsPage = () => {
   const handleSendFriendRequest = async (recipientId: number) => {
     try {
       await sendFriendRequest(recipientId);
-      toast({ title: "Успех", description: "Запрос в друзья отправлен." });
-      // Можно обновить UI, чтобы показать, что запрос отправлен, или закрыть модалку
+      toast({ title: t('friendsPage.actions.sendSuccess') });
       setIsAddFriendModalOpen(false);
-      // Возможно, стоит обновить pendingRequests, если бэк отдает и исходящие (но наш - нет)
     } catch (error: any) {
       console.error("Error sending friend request:", error);
-      const errorMessage = error.response?.data?.message || "Не удалось отправить запрос.";
-      toast({ variant: "destructive", title: "Ошибка", description: errorMessage });
+      const errorMessage = error.response?.data?.message || t('friendsPage.actions.sendError');
+      toast({ variant: "destructive", title: t('friendsPage.error'), description: errorMessage });
     }
   };
 
@@ -214,7 +206,7 @@ const FriendsPage = () => {
   ), [pendingRequestsList, searchTerm]);
 
   if (!isAuthenticated) {
-    return <div className="min-h-screen bg-rulet-dark text-white flex items-center justify-center"><p>Пожалуйста, войдите, чтобы просматривать друзей.</p></div>;
+    return <div className="min-h-screen bg-rulet-dark text-white flex items-center justify-center"><p>{t('friendsPage.error')}</p></div>;
   }
   
   // Демо-данные для списка друзей (ЗАКОММЕНТИРОВАНО)
@@ -227,7 +219,7 @@ const FriendsPage = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Users className="text-rulet-purple" />
-            <h1 className="text-xl font-bold">Друзья</h1>
+            <h1 className="text-xl font-bold">{t('friendsPage.title')}</h1>
           </div>
           <Button 
             variant="outline" 
@@ -235,12 +227,12 @@ const FriendsPage = () => {
             onClick={() => setIsAddFriendModalOpen(true)}
           >
             <UserPlus className="w-5 h-5" />
-            Добавить друга
+            {t('friendsPage.addFriend')}
           </Button>
         </div>
         
         <Input 
-          placeholder="Поиск друзей..." 
+          placeholder={t('friendsPage.searchPlaceholder')} 
           className="mb-4 bg-black/40 border-rulet-purple/30 text-white"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -249,13 +241,13 @@ const FriendsPage = () => {
         <Tabs defaultValue="friends" className="w-full">
           <TabsList className="bg-black/40 text-gray-400 border-b border-rulet-purple/20 rounded-none w-full mb-4 gap-8">
             <TabsTrigger value="friends" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
-              Все друзья
+              {t('friendsPage.title')}
             </TabsTrigger>
             <TabsTrigger value="online" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
-              Онлайн
+              {t('friendsPage.online')}
             </TabsTrigger>
             <TabsTrigger value="requests" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
-              Запросы
+              {t('friendsPage.pendingRequests')}
               {pendingRequestsList.length > 0 && <Badge className="ml-2 bg-rulet-purple">{pendingRequestsList.length}</Badge>}
             </TabsTrigger>
           </TabsList>
@@ -264,18 +256,18 @@ const FriendsPage = () => {
             {isLoadingFriends && (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-rulet-purple" />
-                <p className="ml-2 text-gray-400">Загрузка друзей...</p>
+                <p className="ml-2 text-gray-400">{t('friendsPage.loadingFriends', 'Loading friends...')}</p>
               </div>
             )}
             {errorFriends && !isLoadingFriends && (
               <div className="flex flex-col items-center justify-center py-10 text-red-500">
                 <AlertCircle className="h-8 w-8 mb-2" />
                 <p>{errorFriends}</p>
-                <Button onClick={fetchFriends} className="mt-4 bg-rulet-purple hover:bg-rulet-purple-dark">Попробовать снова</Button>
+                <Button onClick={fetchFriends} className="mt-4 bg-rulet-purple hover:bg-rulet-purple-dark">{t('friendsPage.retry', 'Try again')}</Button>
               </div>
             )}
             {!isLoadingFriends && !errorFriends && filteredFriends.length === 0 && (
-              <p className="text-center text-gray-400 py-10">Список друзей пуст.</p>
+              <p className="text-center text-gray-400 py-10">{t('friendsPage.noFriends')}</p>
             )}
             {!isLoadingFriends && !errorFriends && filteredFriends.map(friend => (
               <Card key={friend.id} className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
@@ -298,14 +290,14 @@ const FriendsPage = () => {
                     </div>
                     <div className="text-right">
                       <span className={`text-xs ${friend.isOnline ? 'text-green-500' : 'text-gray-400'}`}>
-                        {friend.isOnline ? 'Онлайн' : (friend.last_seen_at ? `Был(а) в сети ${formatLastSeen(friend.last_seen_at)}` : 'Офлайн')}
+                        {friend.isOnline ? t('friendsPage.online') : (friend.last_seen_at ? `${t('friendsPage.lastSeen')} ${formatLastSeen(friend.last_seen_at)}` : t('friendsPage.offline'))}
                       </span>
                       <div className="flex gap-2 mt-1">
                         <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple">
-                          Видеочат
+                          {t('friendsPage.videoChat', 'Video Chat')}
                         </Button>
                          <Button size="sm" variant="destructive" className="h-8 px-3" onClick={() => handleRemoveFriend(friend.id)}>
-                          Удалить
+                          {t('friendsPage.remove')}
                         </Button>
                       </div>
                     </div>
@@ -319,7 +311,7 @@ const FriendsPage = () => {
             {isLoadingFriends && (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-rulet-purple" />
-                <p className="ml-2 text-gray-400">Загрузка...</p>
+                <p className="ml-2 text-gray-400">{t('friendsPage.loadingFriends', 'Loading friends...')}</p>
               </div>
             )}
             {errorFriends && !isLoadingFriends && (
@@ -329,7 +321,7 @@ const FriendsPage = () => {
               </div>
             )}
             {!isLoadingFriends && !errorFriends && filteredOnlineFriends.length === 0 && (
-                 <p className="text-center text-gray-400 py-10">Нет друзей онлайн.</p>
+                 <p className="text-center text-gray-400 py-10">{t('friendsPage.noFriendsOnline')}</p>
             )}
             {!isLoadingFriends && !errorFriends && filteredOnlineFriends.map(friend => (
               <Card key={friend.id} className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
@@ -349,13 +341,13 @@ const FriendsPage = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs text-green-500">Онлайн</span>
+                      <span className="text-xs text-green-500">{t('friendsPage.online')}</span>
                       <div className="flex gap-2 mt-1">
                         <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple">
-                          Видеочат
+                          {t('friendsPage.videoChat', 'Video Chat')}
                         </Button>
                         <Button size="sm" variant="destructive" className="h-8 px-3" onClick={() => handleRemoveFriend(friend.id)}>
-                          Удалить
+                          {t('friendsPage.remove')}
                         </Button>
                       </div>
                     </div>
@@ -369,18 +361,18 @@ const FriendsPage = () => {
             {isLoadingRequests && (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-rulet-purple" />
-                <p className="ml-2 text-gray-400">Загрузка запросов...</p>
+                <p className="ml-2 text-gray-400">{t('friendsPage.loadingRequests', 'Loading requests...')}</p>
               </div>
             )}
             {errorRequests && !isLoadingRequests && (
               <div className="flex flex-col items-center justify-center py-10 text-red-500">
                 <AlertCircle className="h-8 w-8 mb-2" />
                 <p>{errorRequests}</p>
-                 <Button onClick={fetchPendingRequests} className="mt-4 bg-rulet-purple hover:bg-rulet-purple-dark">Попробовать снова</Button>
+                 <Button onClick={fetchPendingRequests} className="mt-4 bg-rulet-purple hover:bg-rulet-purple-dark">{t('friendsPage.retry', 'Try again')}</Button>
               </div>
             )}
             {!isLoadingRequests && !errorRequests && filteredPendingRequests.length === 0 && (
-              <p className="text-center text-gray-400 py-10">Нет входящих запросов в друзья.</p>
+              <p className="text-center text-gray-400 py-10">{t('friendsPage.noRequests')}</p>
             )}
             {!isLoadingRequests && !errorRequests && filteredPendingRequests.map(request => (
               <Card key={request.id} className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
@@ -405,7 +397,7 @@ const FriendsPage = () => {
                         className="bg-rulet-purple hover:bg-rulet-purple/80"
                         onClick={() => handleAcceptRequest(request.id)}
                       >
-                        Принять
+                        {t('friendsPage.accept', 'Accept')}
                       </Button>
                       <Button 
                         size="sm" 
@@ -413,7 +405,7 @@ const FriendsPage = () => {
                         className="border-gray-700 text-gray-300 hover:bg-gray-700"
                         onClick={() => handleRejectRequest(request.id, request.user.id)}
                       >
-                        Отклонить
+                        {t('friendsPage.reject', 'Reject')}
                       </Button>
                     </div>
                   </div>

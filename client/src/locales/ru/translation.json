@@ -1,0 +1,248 @@
+{
+  "greeting": "Привет, мир!",
+  "nav": {
+    "chat": "Чат",
+    "rooms": "Комнаты",
+    "friends": "Друзья",
+    "shop": "Магазин",
+    "settings": "Настройки",
+    "logout": "Выйти"
+  },
+  "shopPage": {
+    "title": "Магазин",
+    "tabs": {
+      "premium": "Премиум",
+      "accessoriesStore": "Аксессуары"
+    },
+    "premiumTab": {
+      "mainTitle": "Улучшите свой опыт",
+      "mainDescriptionFemale": "Для вас доступ к основным функциям чата предоставляется бесплатно!",
+      "mainDescriptionSubscribed": "Спасибо за вашу подписку! Вы наслаждаетесь всеми премиум преимуществами.",
+      "mainDescriptionDefault": "Получите мгновенный доступ к собеседницам без очередей. Премиум пользователи наслаждаются приоритетным мэтчингом и расширенными функциями.",
+      "subscribedMessageTitle": "У вас активна Premium подписка!",
+      "subscriptionEndsText": "Дата окончания подписки:",
+      "femaleAccessMessageTitle": "Бесплатный доступ для женщин!",
+      "femaleAccessMessageText": "Наслаждайтесь всеми прелестями общения без ограничений.",
+      "activatePremiumTitle": "Активируйте Премиум Доступ",
+      "activatePremiumDescription": "Получите максимум от нашего сервиса с эксклюзивными возможностями.",
+      "popularBadge": "Популярный",
+      "recommendedBadge": "Рекомендовано",
+      "premiumPlan": {
+        "name": "Премиум",
+        "priceSuffix": "/ месяц",
+        "unlockFeaturesText": "Разблокируйте все возможности и общайтесь без ограничений!",
+        "features": [
+          "Все функции базового плана",
+          "Неограниченное количество друзей",
+          "Расширенные фильтры поиска",
+          "Приоритетная поддержка",
+          "Эксклюзивные стикеры и эффекты"
+        ],
+        "activateButton": "Активировать Премиум"
+      },
+      "antiskip": {
+        "name": "Антискип",
+        "description": "Никогда больше не пропускайте интересного собеседника!",
+        "features": [
+          "Отключает случайный пропуск",
+          "Больше контроля над чатом",
+          "Действует 24 часа"
+        ],
+        "buyButton": "Купить Антискип"
+      },
+      "allAccessories": {
+        "name": "Все аксессуары",
+        "description": "Получите полный набор эксклюзивных аксессуаров для персонализации профиля и чата!",
+        "features": [
+          "Премиум аватары",
+          "Анимированные эффекты",
+          "Набор стикеров",
+          "Золотая рамка профиля"
+        ],
+        "buyButton": "Купить аксессуары"
+      },
+      "cancellationPolicy": "Отмена подписки в любое время. Безопасные платежи через Stripe.",
+      "processingButton": "Обработка...",
+      "whyPremiumTitle": "Почему Премиум? (Для Мужчин)",
+      "whyPremiumFeatures": [
+        {
+          "title": "Мгновенный Мэтчинг",
+          "description": "Больше никакого ожидания - подключайтесь к девушкам мгновенно."
+        },
+        {
+          "title": "Верифицированные Пользователи",
+          "description": "Общайтесь с проверенными пользователями для подлинного опыта."
+        },
+        {
+          "title": "Эксклюзивные Функции",
+          "description": "Наслаждайтесь дополнительными функциями, такими как списки друзей и специальные значки."
+        }
+      ]
+    },
+    "accessoriesTab": {
+      "placeholderTag": "Хит продаж",
+      "buyButton": "Купить"
+    },
+    "notifications": {
+      "loginErrorTitle": "Ошибка",
+      "loginErrorDescription": "Пожалуйста, войдите в аккаунт.",
+      "subscriptionNotNeededTitle": "Подписка не требуется",
+      "subscriptionNotNeededDescription": "Женщинам доступ предоставляется бесплатно.",
+      "subscriptionActiveTitle": "Подписка уже активна",
+      "subscriptionActiveDescription": "У вас уже есть активная премиум подписка.",
+      "checkoutUrlError": "Не удалось получить URL для Stripe Checkout.",
+      "subscriptionErrorTitle": "Ошибка подписки",
+      "subscriptionErrorDescription": "Не удалось инициировать процесс подписки. Попробуйте позже.",
+      "antiskipPurchaseTitle": "Покупка Антискипа",
+      "antiskipPurchaseDescription": "Функционал покупки Антискипа в разработке.",
+      "allAccessoriesPurchaseTitle": "Покупка аксессуаров",
+      "allAccessoriesPurchaseDescription": "Функционал покупки полного набора аксессуаров в разработке."
+    }
+  },
+  "roomsPage": {
+    "title": "Чат-комнаты",
+    "addRoom": "Добавить комнату",
+    "addRoomDialogTitle": "Создать новую чат-комнату",
+    "addRoomDialogDesc": "Заполните данные для вашей новой чат-комнаты. Сделайте её интересной!",
+    "nameLabel": "Название",
+    "namePlaceholder": "например, Любители музыки, Флирт и общение",
+    "descLabel": "Описание",
+    "descPlaceholder": "Краткое описание комнаты (необязательно)",
+    "createButton": "Создать комнату",
+    "creatingButton": "Создание...",
+    "emptyList": "Пока нет ни одной чат-комнаты. Почему бы не создать первую?",
+    "notLoggedIn": "Пожалуйста, войдите в аккаунт, чтобы просматривать и создавать категории.",
+    "createdBy": "Создатель",
+    "noDescription": "Описание отсутствует.",
+    "joinButton": "Войти в комнату",
+    "validationError": "Название категории не может быть пустым.",
+    "loadErrorTitle": "Не удалось загрузить категории",
+    "loadErrorDesc": "Не удалось получить список категорий. Пожалуйста, попробуйте позже.",
+    "createSuccessTitle": "Категория создана",
+    "createSuccessDesc": "Категория \"{{name}}\" успешно создана.",
+    "createErrorTitle": "Не удалось создать категорию",
+    "createErrorDesc": "Произошла непредвиденная ошибка."
+  },
+  "friendsPage": {
+    "title": "Друзья",
+    "searchPlaceholder": "Поиск пользователей по нику...",
+    "addFriend": "Добавить в друзья",
+    "pendingRequests": "Входящие заявки",
+    "noFriends": "У вас пока нет друзей.",
+    "noRequests": "Нет входящих заявок в друзья.",
+    "accept": "Принять",
+    "reject": "Отклонить",
+    "remove": "Удалить",
+    "cancel": "Отмена",
+    "sendRequest": "Отправить заявку в друзья",
+    "requestSent": "Заявка в друзья отправлена!",
+    "alreadyFriends": "Вы уже друзья с этим пользователем.",
+    "requestPending": "Заявка уже отправлена.",
+    "cannotAddSelf": "Нельзя добавить себя в друзья.",
+    "userNotFound": "Пользователь не найден.",
+    "error": "Произошла ошибка. Попробуйте ещё раз.",
+    "lastSeen": "Был(а) в сети:",
+    "online": "В сети",
+    "offline": "Не в сети",
+    "actions": {
+      "acceptSuccess": "Заявка в друзья принята.",
+      "rejectSuccess": "Заявка отклонена.",
+      "removeSuccess": "Друг удалён.",
+      "sendSuccess": "Заявка в друзья отправлена.",
+      "sendError": "Не удалось отправить заявку.",
+      "acceptError": "Не удалось принять заявку.",
+      "rejectError": "Не удалось отклонить заявку.",
+      "removeError": "Не удалось удалить друга."
+    },
+    "loadingFriends": "Загрузка друзей...",
+    "loadingRequests": "Загрузка запросов...",
+    "retry": "Попробовать снова",
+    "noFriendsOnline": "Нет друзей онлайн.",
+    "videoChat": "Видеочат"
+  },
+  "settingsPage": {
+    "title": "Настройки",
+    "profileSection": "Профиль",
+    "name": "Имя",
+    "username": "Никнейм",
+    "email": "Email",
+    "gender": "Пол",
+    "city": "Город",
+    "age": "Возраст",
+    "bio": "О себе",
+    "interests": "Интересы",
+    "password": "Пароль",
+    "passwordConfirm": "Подтвердите пароль",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "saveButton": "Сохранить изменения",
+    "savingButton": "Сохранение...",
+    "editAvatar": "Изменить аватар",
+    "changeAvatar": "Загрузить аватар",
+    "avatarUploadError": "Не удалось загрузить аватар.",
+    "avatarUploadSuccess": "Аватар успешно обновлён!",
+    "updateSuccess": "Профиль успешно обновлён!",
+    "updateError": "Не удалось обновить профиль. Попробуйте ещё раз.",
+    "validation": {
+      "nameRequired": "Имя обязательно.",
+      "emailRequired": "Email обязателен.",
+      "emailInvalid": "Некорректный email.",
+      "passwordsDontMatch": "Пароли не совпадают.",
+      "passwordTooShort": "Пароль должен быть не менее 8 символов."
+    },
+    "genderOptions": {
+      "male": "Мужской",
+      "female": "Женский",
+      "other": "Другое"
+    },
+    "addInterest": "Добавить интерес",
+    "removeInterest": "Удалить",
+    "edit": "Редактировать",
+    "cancel": "Отмена",
+    "emailReadonly": "Email изменить нельзя",
+    "passwordChangeSection": "Смена пароля"
+  },
+  "chatPage": {
+    "title": "Видеочат",
+    "searchingPartner": "Поиск собеседника...",
+    "connectingToUser": "Подключение к пользователю {{userId}}...",
+    "noPartnerAvailable": "Сейчас никого нет в сети.",
+    "enableCameraMic": "Включите камеру и микрофон для начала.",
+    "enableCameraMicButton": "Включить камеру и микрофон",
+    "cameraOff": "Камера выключена",
+    "micOff": "Микрофон выключен",
+    "micOn": "Микрофон включен",
+    "cameraOn": "Камера включена",
+    "incomingCall": "Входящий звонок от пользователя: {{userId}}",
+    "accept": "Принять",
+    "reject": "Отклонить",
+    "hangUp": "Завершить",
+    "stopSearch": "Остановить поиск",
+    "next": "Далее",
+    "joinRoom": "Войти в комнату",
+    "leaveRoom": "Покинуть комнату",
+    "chatPlaceholder": "Введите сообщение...",
+    "send": "Отправить",
+    "partnerFound": "Собеседник найден: {{userId}}. Подключение...",
+    "searching": "Поиск... Нажмите 'Остановить поиск' для отмены.",
+    "callingUser": "Звонок пользователю: {{userId}}...",
+    "clickNext": "Нажмите 'Далее' для поиска собеседника или введите ID выше.",
+    "enableCameraToStart": "Включите камеру для начала.",
+    "loadingUser": "Загрузка пользователя...",
+    "pleaseLogin": "Пожалуйста, войдите, чтобы использовать чат.",
+    "error": "Произошла ошибка. Попробуйте ещё раз.",
+    "fullscreenError": "Ошибка при попытке включить полноэкранный режим: {{error}}"
+  },
+  "genderVerification": {
+    "title": "Проверка пола",
+    "desc": "Нам нужно проверить ваш пол для корректной работы сервиса. Пожалуйста, убедитесь, что ваше лицо хорошо видно в камере.",
+    "cameraNotAvailable": "Камера недоступна",
+    "verifying": "Проверка... {{progress}}%",
+    "startButton": "Начать проверку",
+    "aiNote": "Наш ИИ будет периодически проверять ваш пол для поддержания честности платформы.",
+    "cameraRequiredTitle": "Требуется камера",
+    "cameraRequiredDesc": "Пожалуйста, включите камеру для прохождения проверки пола.",
+    "verificationCompleteTitle": "Проверка завершена",
+    "verificationCompleteDesc": "Вы определены как {{gender}}."
+  }
+} 
