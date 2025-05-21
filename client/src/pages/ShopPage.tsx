@@ -232,6 +232,45 @@ const ShopPage = () => {
                       </Button>
                     </CardFooter>
                   </Card>
+                  {premiumPlans.map(plan => (
+                    <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
+                      {plan.popular && (
+                        <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+                          {t('shopPage.premiumTab.popularBadge')}
+                        </div>
+                      )}
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                          <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
+                        </div>
+                        <div className="flex items-end gap-1 mt-2">
+                          <span className="text-3xl font-bold">{plan.price}</span>
+                          <span className="text-base opacity-80">{plan.period}</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-6 flex-grow">
+                        <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
+                        <ul className="space-y-2 mb-6">
+                          {plan.features.map((feature, idx) => (
+                            <li key={idx} className="flex items-center gap-2">
+                              <ThumbsUp className="w-5 h-5 text-green-400" />
+                              <span className="text-base">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                      <CardFooter className="p-6 bg-black/20">
+                        <Button 
+                          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
+                          onClick={() => handleInitiateSubscription(plan.id)}
+                          disabled={isLoadingCheckout}
+                        >
+                          {isLoadingCheckout ? t('shopPage.premiumTab.processingButton') : t('shopPage.premiumTab.premiumPlan.activateButton')}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
                   <Card key={accessoriesProduct.id} className={`border border-pink-400/60 ${accessoriesProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
                     <CardHeader className="pb-3 pt-4">
                       <CardTitle className="text-xl">{accessoriesProduct.name}</CardTitle>
