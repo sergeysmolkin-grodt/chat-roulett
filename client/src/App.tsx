@@ -115,6 +115,9 @@ const App = () => {
   return (
     <Router>
       <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
+     
+        <div className="app-bg" />
+        <div className="app-bg-overlay" />
         {isAuthenticated && <NavBar />}
         <main className={`flex-grow ${isAuthenticated ? 'pb-16' : ''}`}>
           <Routes>

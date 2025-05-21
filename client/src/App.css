@@ -40,3 +40,30 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  background: url('client/public/bg-popart.jpg') center center / cover no-repeat;
+  opacity: 0.18;
+  pointer-events: none;
+  filter: blur(1.5px) grayscale(0.1);
+}
+
+.app-bg-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  background: rgba(224, 225, 230, 0.72); /* основной тёмный overlay */
+  pointer-events: none;
+}
+
+#root > * {
+  position: relative;
+  z-index: 2;
+}
