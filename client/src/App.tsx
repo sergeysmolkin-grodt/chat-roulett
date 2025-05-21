@@ -20,6 +20,7 @@ import { Button } from './components/ui/button';
 import { Loader2 } from 'lucide-react';
 import apiService from './services/apiService';
 import { useTranslation } from 'react-i18next';
+import './App.css';
 
 const PaymentSuccessPage = () => {
   const { fetchUser } = useAuth();
@@ -116,8 +117,8 @@ const App = () => {
     <Router>
       <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
      
-        <div className="app-bg" />
-        <div className="app-bg-overlay" />
+        <div className="custom-app-bg" />
+        <div className="custom-app-bg-overlay" />
         {isAuthenticated && <NavBar />}
         <main className={`flex-grow ${isAuthenticated ? 'pb-16' : ''}`}>
           <Routes>

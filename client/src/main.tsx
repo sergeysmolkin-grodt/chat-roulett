@@ -5,6 +5,7 @@ import './index.css'
 import './i18n'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from './contexts/AuthContext'
+import './App.css';
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
