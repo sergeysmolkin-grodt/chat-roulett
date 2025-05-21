@@ -16,14 +16,16 @@ class IceCandidateSent implements ShouldBroadcastNow
 
     public $candidate;
     public $fromUserId;
+    public $targetUserId;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($candidate, $fromUserId)
+    public function __construct($candidate, $fromUserId, $targetUserId)
     {
         $this->candidate = $candidate;
         $this->fromUserId = $fromUserId;
+        $this->targetUserId = $targetUserId;
     }
 
     /**
@@ -33,7 +35,7 @@ class IceCandidateSent implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return []; // Placeholder
+        return [new PrivateChannel('video-chat.' . $this->targetUserId)];
     }
 
     public function broadcastAs()

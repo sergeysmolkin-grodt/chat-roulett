@@ -15,8 +15,6 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { updateUserProfile } from '@/services/apiService';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
-
-// Функция для нормализации url (можно вынести в utils)
 const getAvatarUrl = (url?: string | null) => {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;

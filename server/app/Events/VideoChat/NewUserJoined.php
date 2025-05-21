@@ -16,14 +16,16 @@ class NewUserJoined implements ShouldBroadcastNow
 
     public $offer;
     public $fromUserId;
+    public $targetUserId;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($offer, $fromUserId)
+    public function __construct($offer, $fromUserId, $targetUserId)
     {
         $this->offer = $offer;
         $this->fromUserId = $fromUserId;
+        $this->targetUserId = $targetUserId;
     }
 
     /**
@@ -33,11 +35,7 @@ class NewUserJoined implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        // This event will be broadcasted to a specific user's private channel
-        // The recipient user ID will be part of the signaling logic later
-        // For now, let's assume we will pass the target user ID when dispatching the event.
-        // This will be handled by the controller logic.
-        return []; // Placeholder, will be dynamically set or broadcasted on a general channel initially
+        return [new PrivateChannel('video-chat.' . $this->targetUserId)];
     }
 
     public function broadcastAs()

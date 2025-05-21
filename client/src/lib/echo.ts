@@ -42,4 +42,4 @@ const echo = new Echo({
      },
 });
 
-export default echo; 
+export default echo;

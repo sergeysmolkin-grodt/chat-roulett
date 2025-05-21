@@ -9,6 +9,7 @@ use App\Events\VideoChat\NewUserJoined;
 use App\Events\VideoChat\AnswerMade;
 use App\Events\VideoChat\IceCandidateSent;
 use App\Events\VideoChat\CallEnded;
+use Illuminate\Support\Facades\Log;
 
 class VideoSignalingController extends Controller
 {
@@ -18,8 +19,14 @@ class VideoSignalingController extends Controller
             'offer' => 'required',
         ]);
 
-        broadcast(new NewUserJoined($validated['offer'], Auth::id()))
-            ->toOthersOnPrivateChannel('private-video-chat.'. $targetUserId);
+        Log::info('Sending offer', [
+            'from' => Auth::id(),
+            'to' => $targetUserId,
+            'offer' => $validated['offer'],
+        ]);
+
+        broadcast(new NewUserJoined($validated['offer'], Auth::id(), $targetUserId))
+            ->toOthers();
 
         return response()->json(['message' => 'Offer sent']);
     }
@@ -30,8 +37,14 @@ class VideoSignalingController extends Controller
             'answer' => 'required',
         ]);
 
-        broadcast(new AnswerMade($validated['answer'], Auth::id()))
-            ->toOthersOnPrivateChannel('private-video-chat.'. $targetUserId);
+        Log::info('Sending answer', [
+            'from' => Auth::id(),
+            'to' => $targetUserId,
+            'answer' => $validated['answer'],
+        ]);
+
+        broadcast(new AnswerMade($validated['answer'], Auth::id(), $targetUserId))
+            ->toOthers();
 
         return response()->json(['message' => 'Answer sent']);
     }
@@ -42,16 +55,27 @@ class VideoSignalingController extends Controller
             'candidate' => 'required',
         ]);
 
-        broadcast(new IceCandidateSent($validated['candidate'], Auth::id()))
-            ->toOthersOnPrivateChannel('private-video-chat.'. $targetUserId);
+        Log::info('Sending ICE candidate', [
+            'from' => Auth::id(),
+            'to' => $targetUserId,
+            'candidate' => $validated['candidate'],
+        ]);
+
+        broadcast(new IceCandidateSent($validated['candidate'], Auth::id(), $targetUserId))
+            ->toOthers();
 
         return response()->json(['message' => 'ICE candidate sent']);
     }
 
     public function endCall(Request $request, $targetUserId)
     {
-        broadcast(new CallEnded(Auth::id()))
-            ->toOthersOnPrivateChannel('private-video-chat.'. $targetUserId);
+        Log::info('Ending call', [
+            'from' => Auth::id(),
+            'to' => $targetUserId,
+        ]);
+
+        broadcast(new CallEnded(Auth::id(), $targetUserId))
+            ->toOthers();
 
         return response()->json(['message' => 'Call ended notification sent']);
     }

@@ -16,14 +16,16 @@ class AnswerMade implements ShouldBroadcastNow
 
     public $answer;
     public $fromUserId;
+    public $targetUserId;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($answer, $fromUserId)
+    public function __construct($answer, $fromUserId, $targetUserId)
     {
         $this->answer = $answer;
         $this->fromUserId = $fromUserId;
+        $this->targetUserId = $targetUserId;
     }
 
     /**
@@ -33,7 +35,7 @@ class AnswerMade implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return []; // Placeholder
+        return [new PrivateChannel('video-chat.' . $this->targetUserId)];
     }
 
     public function broadcastAs()

@@ -15,13 +15,15 @@ class CallEnded implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $fromUserId;
+    public $targetUserId;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($fromUserId)
+    public function __construct($fromUserId, $targetUserId)
     {
         $this->fromUserId = $fromUserId;
+        $this->targetUserId = $targetUserId;
     }
 
     /**
@@ -31,7 +33,7 @@ class CallEnded implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        return []; // Placeholder
+        return [new PrivateChannel('video-chat.' . $this->targetUserId)];
     }
 
     public function broadcastAs()
