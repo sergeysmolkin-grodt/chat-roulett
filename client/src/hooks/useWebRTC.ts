@@ -10,6 +10,7 @@ interface WebRTCState {
   incomingCall: { fromUserId: number; offer: RTCSessionDescriptionInit } | null;
   availableVideoDevices: MediaDeviceInfo[];
   selectedVideoDeviceId: string | null;
+  isInitializingStream: boolean; // Флаг для предотвращения многократной инициализации
   // ... другие состояния по необходимости
 }
 
@@ -27,90 +28,144 @@ export const useWebRTC = (currentUserId: number | null) => {
     isCallActive: false,
     incomingCall: null,
     availableVideoDevices: [],
-    selectedVideoDeviceId: localStorage.getItem(LOCAL_STORAGE_CAMERA_ID_KEY),
+    selectedVideoDeviceId: null, // Изначально null, будет из localStorage или дефолтный
+    isInitializingStream: false,
   });
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const peerConnectionPartnerId = useRef<number | null>(null); // ID собеседника
 
   const getVideoDevices = useCallback(async () => {
+    console.log('getVideoDevices called');
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      setWebRTCState(prev => ({ ...prev, availableVideoDevices: videoDevices }));
-      if (videoDevices.length > 0 && !webRTCState.selectedVideoDeviceId) {
-        // Если ID не выбран, но камеры есть, выбираем первую и сохраняем
-        const defaultDeviceId = videoDevices[0].deviceId;
-        localStorage.setItem(LOCAL_STORAGE_CAMERA_ID_KEY, defaultDeviceId);
-        setWebRTCState(prev => ({ ...prev, selectedVideoDeviceId: defaultDeviceId }));
+      
+      let currentSelectedId = webRTCState.selectedVideoDeviceId;
+      if (!currentSelectedId) { // Пробуем из localStorage, если еще не в state
+        currentSelectedId = localStorage.getItem(LOCAL_STORAGE_CAMERA_ID_KEY);
       }
-      return videoDevices;
+
+      if (videoDevices.length > 0) {
+        const isValidSelectedId = videoDevices.some(device => device.deviceId === currentSelectedId);
+        if (!currentSelectedId || !isValidSelectedId) {
+          currentSelectedId = videoDevices[0].deviceId; // Берем первую, если нет валидной сохраненной
+          localStorage.setItem(LOCAL_STORAGE_CAMERA_ID_KEY, currentSelectedId!);
+        }
+      } else {
+        currentSelectedId = null; // Нет камер - нет ID
+        localStorage.removeItem(LOCAL_STORAGE_CAMERA_ID_KEY);
+      }
+      
+      setWebRTCState(prev => ({
+         ...prev,
+         availableVideoDevices: videoDevices,
+         selectedVideoDeviceId: currentSelectedId
+      }));
+      return currentSelectedId; // Возвращаем ID для немедленного использования
     } catch (error) {
       console.error("Error enumerating video devices:", error);
-      setWebRTCState(prev => ({ ...prev, availableVideoDevices: [] }));
-      return [];
+      setWebRTCState(prev => ({ ...prev, availableVideoDevices: [], selectedVideoDeviceId: null }));
+      return null;
     }
-  }, [webRTCState.selectedVideoDeviceId]);
+  }, [webRTCState.selectedVideoDeviceId]); // Зависимость от selectedVideoDeviceId, чтобы перепроверить, если он изменился извне
 
-  useEffect(() => {
-    getVideoDevices(); // Получаем список камер при инициализации
+  const initializeLocalStream = useCallback(async (deviceIdToUse?: string) => {
+    if (webRTCState.isInitializingStream) {
+        console.warn('Stream initialization already in progress.');
+        return null;
+    }
+    setWebRTCState(prev => ({ ...prev, isInitializingStream: true }));
 
-    navigator.mediaDevices.addEventListener('devicechange', getVideoDevices);
-    return () => {
-      navigator.mediaDevices.removeEventListener('devicechange', getVideoDevices);
-    };
-  }, [getVideoDevices]);
-
-  // 1. Инициализация локального медиапотока
-  const initializeLocalStream = useCallback(async (deviceId?: string) => {
-    // Останавливаем предыдущий стрим, если он был
     if (webRTCState.localStream) {
         webRTCState.localStream.getTracks().forEach(track => track.stop());
+        setWebRTCState(prev => ({ ...prev, localStream: null })); // Сначала сбрасываем старый стрим
     }
 
-    const targetDeviceId = deviceId || webRTCState.selectedVideoDeviceId;
+    const targetDeviceId = deviceIdToUse || webRTCState.selectedVideoDeviceId;
     console.log('Attempting to initialize local stream with deviceId:', targetDeviceId);
 
+    if (!targetDeviceId && webRTCState.availableVideoDevices.length > 0) {
+        // Если deviceIdToUse не передан, и selectedVideoDeviceId еще не установлен,
+        // но камеры есть, это может быть первый запуск. getVideoDevices должен был установить selectedVideoDeviceId.
+        // На всякий случай, можно попытаться получить его еще раз или использовать первую камеру.
+        console.warn('Target device ID is null, but cameras are available. Trying to pick one.');
+        // const fallbackId = webRTCState.availableVideoDevices[0].deviceId;
+        // Это состояние должно быть уже обработано в getVideoDevices
+    }
+
     const constraints: MediaStreamConstraints = {
-        audio: true, // Можно добавить выбор аудиоустройств позже
-        video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : true,
+        audio: true, 
+        video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : (webRTCState.availableVideoDevices.length > 0 ? true : false),
     };
+
+    if (!constraints.video) {
+        console.warn("No video constraints, cannot initialize stream without camera.");
+        setWebRTCState(prev => ({ ...prev, isInitializingStream: false, localStream: null }));
+        return null;
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setWebRTCState(prev => ({ ...prev, localStream: stream, selectedVideoDeviceId: targetDeviceId || prev.selectedVideoDeviceId }));
+      setWebRTCState(prev => ({ 
+          ...prev, 
+          localStream: stream, 
+          selectedVideoDeviceId: targetDeviceId || prev.selectedVideoDeviceId, // Обновляем, если targetDeviceId был из параметра
+          isInitializingStream: false 
+        }));
+
       if (targetDeviceId) {
         localStorage.setItem(LOCAL_STORAGE_CAMERA_ID_KEY, targetDeviceId);
       }
       
-      // Если есть активное peer connection, нужно обновить треки
       if (peerConnection.current && peerConnection.current.signalingState !== 'closed') {
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
             const sender = peerConnection.current.getSenders().find(s => s.track && s.track.kind === 'video');
             if (sender) {
                 await sender.replaceTrack(videoTrack);
-                console.log('Replaced video track in existing PeerConnection');
             } else {
                 peerConnection.current.addTrack(videoTrack, stream);
-                console.log('Added new video track to existing PeerConnection');
             }
         }
       }
       return stream;
     } catch (error) {
-      console.error("Error accessing media devices with deviceId:", targetDeviceId, error);
-      // Если не удалось с конкретным ID, пытаемся с дефолтным (без deviceId)
-      if (targetDeviceId) {
-        console.warn('Failed with specific deviceId, trying default...');
-        localStorage.removeItem(LOCAL_STORAGE_CAMERA_ID_KEY); // Сбрасываем неработающий ID
-        setWebRTCState(prev => ({...prev, selectedVideoDeviceId: null}));
-        return initializeLocalStream(); // Рекурсивный вызов для попытки с дефолтной камерой
+      console.error(`Error accessing media devices (targetId: ${targetDeviceId}):`, error);
+      if (targetDeviceId) { // Если была попытка с конкретным ID и она провалилась
+        localStorage.removeItem(LOCAL_STORAGE_CAMERA_ID_KEY);
+        setWebRTCState(prev => ({...prev, selectedVideoDeviceId: null, isInitializingStream: false}));
+        // Повторный вызов initializeLocalStream() без deviceId для попытки с дефолтной камерой
+        // Это может создать цикл, если и дефолтная не работает. Осторожно.
+        // Лучше, если getVideoDevices сам выберет следующую доступную или первую.
+        // Пока оставим так: если не вышло с ID, то следующий вызов getVideoDevices сам подберет.
+      } else {
+        setWebRTCState(prev => ({ ...prev, localStream: null, isInitializingStream: false }));
       }
-      setWebRTCState(prev => ({ ...prev, localStream: null }));
       return null;
     }
-  }, [webRTCState.selectedVideoDeviceId, webRTCState.localStream]);
+  }, [webRTCState.selectedVideoDeviceId, webRTCState.localStream, webRTCState.isInitializingStream, webRTCState.availableVideoDevices]);
+  
+  useEffect(() => {
+    // Получаем устройства и затем инициализируем стрим с выбранным/дефолтным ID
+    const setupMedia = async () => {
+        if (!webRTCState.localStream && !webRTCState.isInitializingStream) {
+            const deviceId = await getVideoDevices(); // Получаем/обновляем список и выбранный ID
+            if (deviceId || webRTCState.availableVideoDevices.length > 0) { // Если есть камеры
+                initializeLocalStream(deviceId); // deviceId может быть null, если камер нет, но getVideoDevices должен это учесть
+            } else {
+                console.warn("No video devices found, cannot initialize stream.");
+            }
+        }
+    };
+    setupMedia();
 
+    navigator.mediaDevices.addEventListener('devicechange', setupMedia); // Перенастраиваем при смене устройств
+    return () => {
+      navigator.mediaDevices.removeEventListener('devicechange', setupMedia);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  }, []); // Запускаем один раз при монтировании и при devicechange (через слушатель)
+  
   // 2. Создание и настройка RTCPeerConnection
   const createPeerConnection = useCallback((partnerId: number): RTCPeerConnection => {
     console.log('Creating new PeerConnection for partner:', partnerId);
