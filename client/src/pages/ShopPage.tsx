@@ -1,14 +1,61 @@
-
-import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import NavBar from "@/components/NavBar";
-import { Store } from "lucide-react";
+import { Store, ThumbsUp, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from "@/components/ui/use-toast";
+import apiClient from '@/lib/api';
 
 const ShopPage = () => {
-  // Демо-данные для магазина
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
+
+  const handleInitiateSubscription = async (planId: number) => {
+    if (!user) {
+      toast({ title: "Ошибка", description: "Пожалуйста, войдите в аккаунт.", variant: "destructive" });
+      return;
+    }
+    if (user.gender === 'female') {
+      toast({
+        title: "Подписка не требуется",
+        description: "Женщинам доступ предоставляется бесплатно.",
+        variant: "default"
+      });
+      return;
+    }
+    if (user.subscription_status === 'active') {
+      toast({
+        title: "Подписка уже активна",
+        description: "У вас уже есть активная премиум подписка.",
+        variant: "default"
+      });
+      return;
+    }
+
+    setIsLoadingCheckout(true);
+    try {
+      const response = await apiClient.post('payment/create-checkout-session'); 
+      const { checkout_url } = response.data;
+
+      if (!checkout_url) {
+        throw new Error('Не удалось получить URL для Stripe Checkout.');
+      }
+      window.location.href = checkout_url;
+    } catch (error: any) {
+      console.error("Ошибка при создании сессии Stripe Checkout:", error);
+      toast({
+        title: "Ошибка подписки",
+        description: error.response?.data?.message || error.message || "Не удалось инициировать процесс подписки. Попробуйте позже.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCheckout(false);
+    }
+  };
+
   const premiumPlans = [
     {
       id: 1,
@@ -22,7 +69,7 @@ const ShopPage = () => {
         "HD качество видео"
       ],
       popular: false,
-      color: "bg-gradient-to-r from-purple-600/80 to-blue-500/80"
+      color: "bg-gradient-to-r from-purple-600/80 to-blue-500/80",
     },
     {
       id: 2,
@@ -37,7 +84,7 @@ const ShopPage = () => {
         "Эксклюзивные стикеры и эффекты"
       ],
       popular: true,
-      color: "bg-gradient-to-r from-yellow-500/90 to-amber-600/90"
+      color: "bg-gradient-to-r from-yellow-500/90 to-amber-600/90",
     },
     {
       id: 3,
@@ -52,7 +99,7 @@ const ShopPage = () => {
         "Бесплатные аксессуары каждый месяц"
       ],
       popular: false,
-      color: "bg-gradient-to-r from-pink-600/80 to-rose-600/80"
+      color: "bg-gradient-to-r from-pink-600/80 to-rose-600/80",
     }
   ];
   
@@ -89,8 +136,11 @@ const ShopPage = () => {
     }
   ];
 
+  const isSubscribed = isAuthenticated && user && user.subscription_status === 'active';
+  const isFemale = isAuthenticated && user && user.gender === 'female';
+
   return (
-    <div className="min-h-screen bg-rulet-dark text-white pb-20">
+    <div className="min-h-screen bg-rulet-dark text-white pb-24">
       <div className="pt-6 px-4">
         <div className="flex items-center gap-2 mb-6">
           <Store className="text-rulet-purple" />
@@ -108,51 +158,113 @@ const ShopPage = () => {
           </TabsList>
           
           <TabsContent value="premium" className="space-y-8">
-            <div className="text-center mb-8">
-              <h2 className="text-xl font-semibold mb-2">Выберите премиум-план</h2>
-              <p className="text-gray-400 max-w-md mx-auto">
-                Получите доступ к эксклюзивным функциям и улучшите свой опыт видеочатов
+            <div className="mb-12 text-center">
+              <h1 className="text-3xl font-bold text-white mb-4">Upgrade Your Experience</h1>
+              <p className="text-gray-300 max-w-xl mx-auto">
+                {isFemale 
+                  ? "Для вас доступ к основным функциям чата предоставляется бесплатно!"
+                  : isSubscribed 
+                    ? "Спасибо за вашу подписку! Вы наслаждаетесь всеми премиум преимуществами."
+                    : "Получите мгновенный доступ к собеседницам без очередей. Премиум пользователи наслаждаются приоритетным мэтчингом и расширенными функциями."}
               </p>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {premiumPlans.map(plan => (
-                <Card key={plan.id} className={`border-0 ${plan.color} text-white overflow-hidden relative`}>
-                  {plan.popular && (
-                    <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rotate-0">
-                      Популярный
-                    </div>
+
+            {isSubscribed && (
+              <div className="mb-12 text-center p-6 bg-green-500/10 border border-green-500 rounded-lg">
+                  <h2 className="text-2xl font-bold text-green-400">У вас активна Premium подписка!</h2>
+                  {user?.subscription_ends_at && (
+                      <p className="text-gray-300">Дата окончания подписки: {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
                   )}
-                  <CardHeader className="pb-2">
-                    <CardTitle>{plan.name}</CardTitle>
-                    <div className="flex items-end gap-1">
-                      <span className="text-2xl font-bold">{plan.price}</span>
-                      <span className="text-sm opacity-80">/ {plan.period}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-4">
-                    <ul className="space-y-2">
-                      {plan.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 6L9 17l-5-5" />
-                          </svg>
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-0">
-                      Выбрать план
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {isFemale && (
+               <div className="mb-12 text-center p-6 bg-pink-500/10 border border-pink-500 rounded-lg">
+                  <h2 className="text-2xl font-bold text-pink-400">Бесплатный доступ для женщин!</h2>
+                  <p className="text-gray-300">Наслаждайтесь всеми прелестями общения без ограничений.</p>
+              </div>
+            )}
             
-            <div className="text-center text-sm text-gray-400 mt-4">
-              Отмена подписки в любое время. Без скрытых платежей.
+            {isAuthenticated && user && user.gender === 'male' && !isSubscribed && (
+              <>
+                <div className="text-center mb-8">
+                  <h2 className="text-xl font-semibold mb-2">Активируйте Премиум Доступ</h2>
+                  <p className="text-gray-400 max-w-md mx-auto">
+                    Получите максимум от нашего сервиса с эксклюзивными возможностями.
+                  </p>
+                </div>
+                {premiumPlans.filter(plan => plan.popular).map(plan => (
+                  <Card key={plan.id} className={`border-0 ${plan.color} text-white overflow-hidden relative flex flex-col max-w-lg mx-auto shadow-xl`}>
+                    {plan.popular && (
+                      <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+                        Популярный
+                      </div>
+                    )}
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                        <Badge variant="outline" className="text-yellow-400 border-yellow-400">Рекомендовано</Badge>
+                      </div>
+                      <div className="flex items-end gap-1 mt-2">
+                        <span className="text-3xl font-bold">{plan.price}</span>
+                        <span className="text-base opacity-80">/ {plan.period}</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-6 flex-grow">
+                      <p className="text-sm text-yellow-100/90 mb-4">Разблокируйте все возможности и общайтесь без ограничений!</p>
+                      <ul className="space-y-2 mb-6">
+                        {plan.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <ThumbsUp className="w-5 h-5 text-green-400" />
+                            <span className="text-base">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter className="p-6 bg-black/20">
+                      <Button 
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
+                        onClick={() => handleInitiateSubscription(plan.id)}
+                        disabled={isLoadingCheckout}
+                      >
+                        {isLoadingCheckout ? "Обработка..." : `Активировать ${plan.name}`}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+                <div className="text-center text-sm text-gray-400 mt-6">
+                  Отмена подписки в любое время. Безопасные платежи через Stripe.
+                </div>
+              </>
+            )}
+            
+            <div className="text-center my-16">
+              <h2 className="text-2xl font-semibold text-white mb-8">Почему Премиум? (Для Мужчин)</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
+                  <div className="text-rulet-purple text-4xl mb-4">
+                    <Zap className="w-12 h-12 mx-auto" />
+                  </div>
+                  <h3 className="text-white text-lg font-medium mb-2">Мгновенный Мэтчинг</h3>
+                  <p className="text-gray-400">Больше никакого ожидания - подключайтесь к девушкам мгновенно.</p>
+                </div>
+                
+                <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
+                  <div className="text-rulet-purple text-4xl mb-4">
+                    <ShieldCheck className="w-12 h-12 mx-auto" />
+                  </div>
+                  <h3 className="text-white text-lg font-medium mb-2">Верифицированные Пользователи</h3>
+                  <p className="text-gray-400">Общайтесь с проверенными пользователями для подлинного опыта.</p>
+                </div>
+                
+                <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
+                  <div className="text-rulet-purple text-4xl mb-4">
+                    <Sparkles className="w-12 h-12 mx-auto" />
+                  </div>
+                  <h3 className="text-white text-lg font-medium mb-2">Эксклюзивные Функции</h3>
+                  <p className="text-gray-400">Наслаждайтесь дополнительными функциями, такими как списки друзей и специальные значки.</p>
+                </div>
+              </div>
             </div>
           </TabsContent>
           
@@ -188,8 +300,6 @@ const ShopPage = () => {
           </TabsContent>
         </Tabs>
       </div>
-      
-      <NavBar isPremium={true} />
     </div>
   );
 };

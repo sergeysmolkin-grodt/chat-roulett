@@ -51,11 +51,6 @@ const NavBar = () => {
         <span className="text-xs sm:text-sm">Settings</span>
       </Link>
       
-      <Link to="/premium" className={`nav-button ${isActive('/premium') ? 'active' : ''} ${isPremiumUser ? 'text-yellow-400 premium-glow' : ''}`}>
-        <Star size={20} className="mb-0.5 sm:mb-1" />
-        <span className="text-xs sm:text-sm">Premium</span>
-      </Link>
-
       {isAuthenticated && (
         <Button variant="ghost" onClick={handleLogout} className="nav-button text-red-500 hover:text-red-400">
           <LogOut size={20} className="mb-0.5 sm:mb-1" />
