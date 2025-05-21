@@ -45,9 +45,9 @@ const NavBar = () => {
           />
           <NavbarItem 
             icon={<Settings size={24} />} 
-            href="/settings" 
-            label={t('nav.settings')}
-            isActive={location.pathname.startsWith('/settings')}
+            href="/profile" 
+            label={t('nav.profile') || 'Profile'}
+            isActive={location.pathname.startsWith('/profile')}
           />
         </div>
       </div>

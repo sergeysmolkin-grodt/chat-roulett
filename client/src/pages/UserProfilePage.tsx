@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,19 +12,22 @@ import { Form, FormItem, FormLabel, FormControl, FormMessage, FormField } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { updateUserProfile } from '@/services/apiService';
+import { updateUserProfile, uploadAvatar } from '@/services/apiService';
 import { useForm } from 'react-hook-form';
-import { useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useTranslation } from 'react-i18next';
+
 const getAvatarUrl = (url?: string | null) => {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;
-  return `/storage/avatars/${url.replace(/^.*[\\/]/, '')}`;
+  return `http://localhost:8081${url}`;
 };
 
 const UserProfilePage = () => {
   const { user, isLoading, fetchUser } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { t } = useTranslation();
   const form = useForm({
     defaultValues: {
       name: user?.name || '',
@@ -39,6 +42,8 @@ const UserProfilePage = () => {
       password_confirmation: '',
     },
   });
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Сброс формы при открытии
   const handleEditOpen = () => {
@@ -74,12 +79,46 @@ const UserProfilePage = () => {
     }
   };
 
+  const handleDeleteAvatar = async () => {
+    setAvatarMenuOpen(false);
+    setSaving(true);
+    try {
+      // Отправляем uploadAvatar с пустым файлом (или null), если сервер поддерживает, либо доработать API
+      await uploadAvatar(new File([], ''));
+      await fetchUser();
+    } catch (e) {
+      // TODO: показать ошибку
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangeAvatar = () => {
+    setAvatarMenuOpen(false);
+    setTimeout(() => fileInputRef.current?.click(), 100); // Даем Popover закрыться
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input changed', e.target.files);
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setSaving(true);
+    try {
+      await uploadAvatar(file);
+      await fetchUser();
+    } catch (e) {
+      // TODO: показать ошибку
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-white">Загрузка...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-white">{t('profilePage.loading')}</div>;
   }
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center text-white">Пользователь не найден</div>;
+    return <div className="min-h-screen flex items-center justify-center text-white">{t('profilePage.notFound')}</div>;
   }
 
   // interests, bio, avatar_url, city, age, created_at, Premium, username
@@ -88,51 +127,51 @@ const UserProfilePage = () => {
       {/* Верхняя секция с аватаром и основной информацией */}
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-bold">Профиль</h1>
+          <h1 className="text-xl font-bold">{t('profilePage.title')}</h1>
           <Dialog open={editOpen} onOpenChange={setEditOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-rulet-purple text-rulet-purple" onClick={handleEditOpen}>
-                Редактировать
+                {t('profilePage.editButton')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Редактировать профиль</DialogTitle>
+                <DialogTitle>{t('profilePage.editTitle')}</DialogTitle>
               </DialogHeader>
               <div className="overflow-y-auto max-h-[80vh] pr-2">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField name="name" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Имя</FormLabel>
+                        <FormLabel>{t('profilePage.name')}</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="username" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Username</FormLabel>
+                        <FormLabel>{t('profilePage.username')}</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="email" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>{t('profilePage.email')}</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="gender" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Пол</FormLabel>
+                        <FormLabel>{t('profilePage.gender')}</FormLabel>
                         <FormControl>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="male">Мужской</SelectItem>
-                              <SelectItem value="female">Женский</SelectItem>
-                              <SelectItem value="other">Другое</SelectItem>
+                              <SelectItem value="male">{t('profilePage.genderOptions.male')}</SelectItem>
+                              <SelectItem value="female">{t('profilePage.genderOptions.female')}</SelectItem>
+                              <SelectItem value="other">{t('profilePage.genderOptions.other')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -141,57 +180,56 @@ const UserProfilePage = () => {
                     )} />
                     <FormField name="city" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Город</FormLabel>
+                        <FormLabel>{t('profilePage.city')}</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="age" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Возраст</FormLabel>
+                        <FormLabel>{t('profilePage.age')}</FormLabel>
                         <FormControl><Input type="number" min={1} max={120} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="bio" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>О себе</FormLabel>
+                        <FormLabel>{t('profilePage.bio')}</FormLabel>
                         <FormControl><Textarea {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    {/* Интересы: простое поле через запятую, позже можно сделать теги */}
                     <FormField name="interests" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Интересы (через запятую)</FormLabel>
+                        <FormLabel>{t('profilePage.interests')}</FormLabel>
                         <FormControl>
                           <Input
                             value={Array.isArray(field.value) ? field.value.join(', ') : ''}
                             onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                            placeholder={t('profilePage.interestsPlaceholder')}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    {/* Смена пароля */}
                     <FormField name="password" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Новый пароль</FormLabel>
+                        <FormLabel>{t('profilePage.newPassword')}</FormLabel>
                         <FormControl><Input type="password" autoComplete="new-password" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField name="password_confirmation" control={form.control} render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Подтверждение пароля</FormLabel>
+                        <FormLabel>{t('profilePage.passwordConfirm')}</FormLabel>
                         <FormControl><Input type="password" autoComplete="new-password" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <DialogFooter>
-                      <Button type="submit" disabled={saving} className="w-full">Сохранить</Button>
+                      <Button type="submit" disabled={saving} className="w-full">{t('profilePage.saveButton')}</Button>
                       <DialogClose asChild>
-                        <Button type="button" variant="ghost" className="w-full">Отмена</Button>
+                        <Button type="button" variant="ghost" className="w-full">{t('profilePage.cancelButton')}</Button>
                       </DialogClose>
                     </DialogFooter>
                   </form>
@@ -201,10 +239,19 @@ const UserProfilePage = () => {
           </Dialog>
         </div>
         <div className="flex flex-col items-center">
-          <Avatar className="w-32 h-32 border-4 border-violet-500 shadow-lg">
-            <AvatarImage src={getAvatarUrl(user.avatar_url)} alt={user.name} />
-            <AvatarFallback className="text-4xl bg-violet-900">{user.name?.[0] || 'U'}</AvatarFallback>
-          </Avatar>
+          <Popover open={avatarMenuOpen} onOpenChange={setAvatarMenuOpen}>
+            <PopoverTrigger asChild>
+              <Avatar className="w-32 h-32 border-4 border-violet-500 shadow-lg cursor-pointer">
+                <AvatarImage src={getAvatarUrl(user.avatar_url) + `?t=${Date.now()}`} alt={user.name} />
+                <AvatarFallback className="text-4xl bg-violet-900">{user.name?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 flex flex-col gap-2">
+              <Button variant="ghost" onClick={handleChangeAvatar}>{t('profilePage.changeAvatar')}</Button>
+              <Button variant="destructive" onClick={handleDeleteAvatar}>{t('profilePage.deleteAvatar')}</Button>
+            </PopoverContent>
+          </Popover>
+          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAvatarFileChange} />
           <h2 className="text-2xl font-bold mb-1">{user.name}</h2>
           {user.username && <p className="text-gray-400 mb-2">@{user.username}</p>}
           {user.subscription_status === 'active' && (
@@ -294,7 +341,7 @@ const UserProfilePage = () => {
           </CardContent>
         </Card>
       </div>
-      <NavBar isPremium={user.subscription_status === 'active'} />
+      <NavBar />
     </div>
   );
 };

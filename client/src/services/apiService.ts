@@ -70,4 +70,12 @@ export const updateUserProfile = (data: Partial<{
   interests?: string[];
 }>) => apiService.put('/user', data);
 
+export const uploadAvatar = (file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return apiService.post('/user/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
 export default apiService; 

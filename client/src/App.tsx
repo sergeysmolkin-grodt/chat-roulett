@@ -131,7 +131,6 @@ const App = () => {
               <Route path="/premium" element={<PremiumPage />} />
               <Route path="/profile" element={<UserProfilePage />} />
               <Route path="/profile/:userId" element={<UserProfilePage />} />
-              <Route path="/settings" element={<UserSettingsPage />} />
               <Route path="/friends" element={<FriendsPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/shop" element={<ShopPage />} />

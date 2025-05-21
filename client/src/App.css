@@ -50,7 +50,7 @@
   background: url('/bg-popart.jpg') center center / cover no-repeat;
   opacity: 0.18;
   pointer-events: none;
-  filter: blur(1.5px) grayscale(0.1);
+  filter: blur(1.0px) grayscale(0.1);
 }
 
 .custom-app-bg-overlay {

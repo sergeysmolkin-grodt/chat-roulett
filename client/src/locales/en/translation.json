@@ -5,7 +5,7 @@
     "rooms": "Rooms",
     "friends": "Friends",
     "shop": "Shop",
-    "settings": "Settings",
+    "profile": "Profile",
     "logout": "Logout"
   },
   "shopPage": {
@@ -179,6 +179,7 @@
     "savingButton": "Saving...",
     "editAvatar": "Edit Avatar",
     "changeAvatar": "Change Avatar",
+    "deleteAvatar": "Delete Avatar",
     "avatarUploadError": "Failed to upload avatar.",
     "avatarUploadSuccess": "Avatar updated successfully!",
     "updateSuccess": "Profile updated successfully!",
@@ -244,5 +245,30 @@
     "cameraRequiredDesc": "Please enable your camera to verify your gender.",
     "verificationCompleteTitle": "Verification Complete",
     "verificationCompleteDesc": "You have been identified as {{gender}}."
+  },
+  "profilePage": {
+    "loading": "Loading...",
+    "notFound": "User not found",
+    "title": "Profile",
+    "editButton": "Edit",
+    "editTitle": "Edit Profile",
+    "name": "Name",
+    "username": "Username",
+    "email": "Email",
+    "gender": "Gender",
+    "city": "City",
+    "age": "Age",
+    "bio": "Bio",
+    "interests": "Interests (comma separated)",
+    "interestsPlaceholder": "e.g. music, sports, travel",
+    "newPassword": "New Password",
+    "passwordConfirm": "Confirm Password",
+    "saveButton": "Save",
+    "cancelButton": "Cancel",
+    "genderOptions": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    }
   }
 } 

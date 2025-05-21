@@ -5,7 +5,7 @@
     "rooms": "Комнаты",
     "friends": "Друзья",
     "shop": "Магазин",
-    "settings": "Настройки",
+    "profile": "Профиль",
     "logout": "Выйти"
   },
   "shopPage": {
@@ -244,5 +244,32 @@
     "cameraRequiredDesc": "Пожалуйста, включите камеру для прохождения проверки пола.",
     "verificationCompleteTitle": "Проверка завершена",
     "verificationCompleteDesc": "Вы определены как {{gender}}."
+  },
+  "profilePage": {
+    "loading": "Загрузка...",
+    "notFound": "Пользователь не найден",
+    "title": "Профиль",
+    "editButton": "Редактировать",
+    "editTitle": "Редактировать профиль",
+    "name": "Имя",
+    "username": "Никнейм",
+    "email": "Email",
+    "gender": "Пол",
+    "city": "Город",
+    "age": "Возраст",
+    "bio": "О себе",
+    "interests": "Интересы (через запятую)",
+    "interestsPlaceholder": "например, музыка, спорт, путешествия",
+    "newPassword": "Новый пароль",
+    "passwordConfirm": "Подтвердите пароль",
+    "saveButton": "Сохранить",
+    "cancelButton": "Отмена",
+    "genderOptions": {
+      "male": "Мужской",
+      "female": "Женский",
+      "other": "Другое"
+    },
+    "changeAvatar": "Сменить аватар",
+    "deleteAvatar": "Удалить аватар"
   }
 } 
