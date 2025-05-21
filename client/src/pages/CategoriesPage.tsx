@@ -185,7 +185,7 @@ const CategoriesPage = () => {
                       id="name"
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
-                      className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple"
+                      className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple text-white placeholder:text-gray-400"
                       placeholder={t('roomsPage.namePlaceholder')}
                       disabled={isSubmitting}
                     />
@@ -198,7 +198,7 @@ const CategoriesPage = () => {
                       id="description"
                       value={newCategoryDescription}
                       onChange={(e) => setNewCategoryDescription(e.target.value)}
-                      className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple"
+                      className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple text-white placeholder:text-gray-400"
                       placeholder={t('roomsPage.descPlaceholder')}
                       disabled={isSubmitting}
                     />

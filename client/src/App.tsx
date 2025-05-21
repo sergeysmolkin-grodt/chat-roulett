@@ -64,31 +64,6 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
-const LanguageSwitcher = () => {
-  const { i18n } = useTranslation();
-  const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
-  return (
-    <div className="fixed top-2 right-4 z-50 flex gap-1 bg-black/40 rounded-full px-2 py-1 shadow-lg">
-      <Button 
-        variant={i18n.language === 'ru' ? "secondary" : "ghost"} 
-        size="sm"
-        onClick={() => changeLanguage('ru')} 
-        className="text-xs p-1 h-auto"
-      >
-        RU
-      </Button>
-      <Button 
-        variant={i18n.language === 'en' ? "secondary" : "ghost"} 
-        size="sm"
-        onClick={() => changeLanguage('en')} 
-        className="text-xs p-1 h-auto"
-      >
-        EN
-      </Button>
-    </div>
-  );
-};
-
 const App = () => {
   const { user, isLoading, fetchUser, isAuthenticated } = useAuth();
 
@@ -148,12 +123,9 @@ const App = () => {
 };
 
 const RootApp = () => (
-  <>
-    <LanguageSwitcher />
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </>
+  <AuthProvider>
+    <App />
+  </AuthProvider>
 );
 
 export default RootApp;

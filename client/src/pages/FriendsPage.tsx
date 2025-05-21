@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import ChatBox from '@/components/ChatBox';
 
 // Типы для данных с бэкенда
 interface UserProfile {
@@ -44,6 +45,12 @@ const formatLastSeen = (lastSeenAt: string | null) => {
   }
 };
 
+const getAvatarUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `http://localhost:8081${url}`;
+};
+
 const FriendsPage = () => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -64,6 +71,7 @@ const FriendsPage = () => {
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [openChatWith, setOpenChatWith] = useState<UserProfile | null>(null);
 
   const fetchFriends = async () => {
     setIsLoadingFriends(true);
@@ -221,14 +229,36 @@ const FriendsPage = () => {
             <Users className="text-rulet-purple" />
             <h1 className="text-xl font-bold">{t('friendsPage.title')}</h1>
           </div>
-          <Button 
-            variant="outline" 
-            className="border-rulet-purple text-rulet-purple flex items-center gap-2"
-            onClick={() => setIsAddFriendModalOpen(true)}
-          >
-            <UserPlus className="w-5 h-5" />
-            {t('friendsPage.addFriend')}
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Аватар пользователя слева от кнопки */}
+            <a
+              href="/profile"
+              className="group"
+              title={currentUser?.username || currentUser?.name || 'Профиль'}
+            >
+              <div className="w-12 h-12 rounded-full border-2 border-rulet-purple shadow-lg bg-black/60 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                {currentUser?.avatar_url ? (
+                  <img
+                    src={getAvatarUrl(currentUser.avatar_url)}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-rulet-purple">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
+                  </svg>
+                )}
+              </div>
+            </a>
+            <Button 
+              variant="outline" 
+              className="border-rulet-purple text-rulet-purple flex items-center gap-2"
+              onClick={() => setIsAddFriendModalOpen(true)}
+            >
+              <UserPlus className="w-5 h-5" />
+              {t('friendsPage.addFriend')}
+            </Button>
+          </div>
         </div>
         
         <Input 
@@ -296,6 +326,12 @@ const FriendsPage = () => {
                         <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple">
                           {t('friendsPage.videoChat', 'Video Chat')}
                         </Button>
+                        <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple" onClick={() => setOpenChatWith(friend)}>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 inline-block mr-1">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75m19.5 0v.243a2.25 2.25 0 01-.659 1.591l-7.591 7.591a2.25 2.25 0 01-3.182 0l-7.591-7.591A2.25 2.25 0 012.25 6.993V6.75" />
+                          </svg>
+                          {t('friendsPage.textChat', 'Чат')}
+                        </Button>
                          <Button size="sm" variant="destructive" className="h-8 px-3" onClick={() => handleRemoveFriend(friend.id)}>
                           {t('friendsPage.remove')}
                         </Button>
@@ -345,6 +381,12 @@ const FriendsPage = () => {
                       <div className="flex gap-2 mt-1">
                         <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple">
                           {t('friendsPage.videoChat', 'Video Chat')}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-8 px-3 border-rulet-purple/50 text-rulet-purple" onClick={() => setOpenChatWith(friend)}>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 inline-block mr-1">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75m19.5 0v.243a2.25 2.25 0 01-.659 1.591l-7.591 7.591a2.25 2.25 0 01-3.182 0l-7.591-7.591A2.25 2.25 0 012.25 6.993V6.75" />
+                          </svg>
+                          {t('friendsPage.textChat', 'Чат')}
                         </Button>
                         <Button size="sm" variant="destructive" className="h-8 px-3" onClick={() => handleRemoveFriend(friend.id)}>
                           {t('friendsPage.remove')}
@@ -472,6 +514,38 @@ const FriendsPage = () => {
                  </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Popup ChatBox в левом нижнем углу */}
+      {openChatWith && (
+        <div className="fixed bottom-4 left-4 w-96 max-w-full bg-black/80 border border-rulet-purple/40 rounded-xl shadow-2xl z-50 flex flex-col animate-fade-in">
+          {/* Header */}
+          <div className="flex items-center gap-3 p-3 border-b border-rulet-purple/30 bg-black/70 rounded-t-xl">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-rulet-purple/40">
+              {openChatWith.avatar_url ? (
+                <img src={getAvatarUrl(openChatWith.avatar_url)} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-rulet-purple text-white font-bold text-lg">{openChatWith.name?.[0] || '?'}</div>
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="text-white font-semibold">{openChatWith.name || openChatWith.username || openChatWith.email}</div>
+              <div className="text-xs text-gray-400">@{openChatWith.username || openChatWith.email}</div>
+            </div>
+            <Button size="icon" variant="ghost" className="text-gray-400 hover:text-white" onClick={() => setOpenChatWith(null)}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Button>
+          </div>
+          {/* ChatBox UI (локальный state сообщений) */}
+          <ChatBox
+            isOpen={true}
+            onToggle={() => setOpenChatWith(null)}
+            connected={true}
+            // Можно добавить пропсы для передачи имени/аватара друга
+          />
         </div>
       )}
 
