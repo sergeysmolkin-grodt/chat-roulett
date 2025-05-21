@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +72,9 @@ const FriendsPage = () => {
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [openChatWith, setOpenChatWith] = useState<UserProfile | null>(null);
+  const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 24, y: window.innerHeight - 440 });
+  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const dragData = useRef<{ offsetX: number; offsetY: number; dragging: boolean }>({ offsetX: 0, offsetY: 0, dragging: false });
 
   const fetchFriends = async () => {
     setIsLoadingFriends(true);
@@ -212,6 +215,42 @@ const FriendsPage = () => {
     (request.user.username && request.user.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
     request.user.email.toLowerCase().includes(searchTerm.toLowerCase())
   ), [pendingRequestsList, searchTerm]);
+
+  // Drag handlers
+  const handleDragStart = (e: React.MouseEvent) => {
+    if (!chatBoxRef.current) return;
+    dragData.current.dragging = true;
+    dragData.current.offsetX = e.clientX - chatPosition.x;
+    dragData.current.offsetY = e.clientY - chatPosition.y;
+    document.body.style.userSelect = 'none';
+  };
+  const handleDrag = (e: MouseEvent) => {
+    if (!dragData.current.dragging) return;
+    let newX = e.clientX - dragData.current.offsetX;
+    let newY = e.clientY - dragData.current.offsetY;
+    // Ограничения по границам окна
+    const box = chatBoxRef.current;
+    const width = box?.offsetWidth || 400;
+    const height = box?.offsetHeight || 400;
+    newX = Math.max(0, Math.min(window.innerWidth - width, newX));
+    newY = Math.max(0, Math.min(window.innerHeight - height, newY));
+    setChatPosition({ x: newX, y: newY });
+  };
+  const handleDragEnd = () => {
+    dragData.current.dragging = false;
+    document.body.style.userSelect = '';
+  };
+  useEffect(() => {
+    if (!openChatWith) return;
+    const onMove = (e: MouseEvent) => handleDrag(e);
+    const onUp = () => handleDragEnd();
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [openChatWith, chatPosition]);
 
   if (!isAuthenticated) {
     return <div className="min-h-screen bg-rulet-dark text-white flex items-center justify-center"><p>{t('friendsPage.error')}</p></div>;
