@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import App from '../App';
 
 interface CategoryUser {
   id: number;
@@ -31,6 +32,31 @@ const getAvatarUrl = (url?: string | null) => {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   return `http://localhost:8081${url}`;
+};
+
+const LanguageSwitcher = () => {
+  const { i18n } = useTranslation();
+  const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
+  return (
+    <div className="flex gap-1 bg-black/40 rounded-full px-2 py-1 shadow-lg">
+      <Button 
+        variant={i18n.language === 'ru' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('ru')} 
+        className="text-xs p-1 h-auto"
+      >
+        RU
+      </Button>
+      <Button 
+        variant={i18n.language === 'en' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('en')} 
+        className="text-xs p-1 h-auto"
+      >
+        EN
+      </Button>
+    </div>
+  );
 };
 
 const CategoriesPage = () => {
@@ -114,7 +140,9 @@ const CategoriesPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">{t('roomsPage.title')}</h1>
         <div className="flex items-center gap-4">
-          {/* Аватар пользователя слева от кнопки */}
+          {/* LanguageSwitcher слева от аватара */}
+          <LanguageSwitcher />
+          {/* Аватар пользователя */}
           <a
             href="/profile"
             className="group"
