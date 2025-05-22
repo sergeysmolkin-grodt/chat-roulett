@@ -21,6 +21,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     getCsrfCookie();
+    document.title = 'YNYIETY';
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

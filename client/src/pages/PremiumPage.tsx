@@ -17,6 +17,10 @@ const PremiumPage = () => {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
 
+  useEffect(() => {
+    document.title = 'YNYIETY';
+  }, []);
+
   const handleInitiateSubscription = async () => {
     if (!user || user.gender !== 'male' || user.subscription_status === 'active') {
       toast({

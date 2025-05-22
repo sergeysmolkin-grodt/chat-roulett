@@ -259,6 +259,10 @@ const FriendsPage = () => {
     };
   }, [openChatWith]);
 
+  useEffect(() => {
+    document.title = 'YNYIETY';
+  }, []);
+
   if (!isAuthenticated) {
     return <div className="min-h-screen bg-rulet-dark text-white flex items-center justify-center"><p>{t('friendsPage.error')}</p></div>;
   }

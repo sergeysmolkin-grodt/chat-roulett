@@ -77,6 +77,7 @@ const CategoriesPage = () => {
 
   useEffect(() => {
     fetchCategories();
+    document.title = 'YNYIETY';
   }, []);
 
   const fetchCategories = async () => {

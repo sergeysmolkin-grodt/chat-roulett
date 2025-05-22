@@ -15,6 +15,10 @@ const ShopPage = () => {
   const { t } = useTranslation();
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
 
+  useEffect(() => {
+    document.title = 'YNYIETY';
+  }, []);
+
   const handleInitiateSubscription = async (planId: number) => {
     if (!user) {
       toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });

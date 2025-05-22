@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,10 @@ const UserSettingsPage = () => {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  useEffect(() => {
+    document.title = 'YNYIETY';
+  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
