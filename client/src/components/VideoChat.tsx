@@ -11,6 +11,7 @@ interface VideoChatProps { room?: string }
 const VideoChat = ({ room }: VideoChatProps) => {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const currentUserId = user ? user.id : null;
+  const userGender = user?.gender || 'male';
   
   const {
     localStream,
@@ -36,6 +37,13 @@ const VideoChat = ({ room }: VideoChatProps) => {
   const [targetUserIdInput, setTargetUserIdInput] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchingRandom, setIsSearchingRandom] = useState(false);
+  const [preferGender, setPreferGender] = useState<'female' | 'any'>('female');
+  const [showGenderSwitch, setShowGenderSwitch] = useState(false);
+
+  const effectiveRoom = room || 'global';
+
+  // Добавим определение премиум-статуса
+  const isPremiumUser = user?.subscription_status === 'active';
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -86,7 +94,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   };
 
   const handleInitiatePartnerSearch = async () => {
-    if (!room) {
+    if (!effectiveRoom) {
       toast({ variant: 'destructive', description: 'Room is required for chat.' });
       return;
     }
@@ -99,14 +107,33 @@ const VideoChat = ({ room }: VideoChatProps) => {
       initializeLocalStream();
       return;
     }
-
+    // Только для мужчин без подписки запрещаем поиск
+    if (userGender === 'male' && !isPremiumUser) {
+      toast({
+        variant: "destructive",
+        title: "Premium Required",
+        description: "Male users need a premium subscription to start chatting.",
+      });
+      return;
+    }
+    // Для женщин и других — поиск всегда разрешён
     setIsSearching(true);
     setIsSearchingRandom(true);
+    setShowGenderSwitch(false);
     try {
-      const response = await apiService.findPartner(room);
+      const response = await apiService.findPartner({
+        room: effectiveRoom,
+        gender: userGender,
+        preferGender,
+      });
       if (response.data && response.data.partner_id) {
         toast({ description: `Partner found: ${response.data.partner_id}. Connecting...` });
         startCall(response.data.partner_id);
+      } else if (response.data && response.data.message === 'no_female_found' && userGender === 'male' && preferGender === 'female') {
+        setShowGenderSwitch(true);
+        setIsSearching(false);
+        setIsSearchingRandom(false);
+        toast({ description: 'Нет девушек в поиске. Хотите искать всех?' });
       } else {
         toast({ description: "Searching for a partner... No one available right now." });
       }
@@ -204,6 +231,25 @@ const VideoChat = ({ room }: VideoChatProps) => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-rulet-dark">
+      {showGenderSwitch && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-black/80 p-4 rounded-xl border border-rulet-purple text-center shadow-lg">
+          <div className="mb-2 text-white">Нет девушек в поиске. Кого искать?</div>
+          <div className="flex gap-2 justify-center">
+            <Button
+              className={preferGender === 'female' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
+              onClick={() => { setPreferGender('female'); setShowGenderSwitch(false); handleInitiatePartnerSearch(); }}
+            >
+              Только девушек
+            </Button>
+            <Button
+              className={preferGender === 'any' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
+              onClick={() => { setPreferGender('any'); setShowGenderSwitch(false); handleInitiatePartnerSearch(); }}
+            >
+              Всех
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="absolute top-4 left-4 z-10 bg-gray-700 p-2 rounded shadow flex space-x-2 items-center">
         <input 
             type="number" 

@@ -49,7 +49,7 @@ export const rejectOrRemoveFriend = (friendUserId: number) => apiService.post(`/
 export const searchUsers = (term: string) => apiService.get('/users/search', { params: { term } });
 
 // Video Chat
-export const findPartner = (room: string) => apiService.post('/chat/find-partner', { room });
+export const findPartner = (params: { room: string, gender: string, preferGender: string }) => apiService.post('/chat/find-partner', params);
 export const stopSearch = () => apiService.post('/chat/stop-search');
 
 // Categories

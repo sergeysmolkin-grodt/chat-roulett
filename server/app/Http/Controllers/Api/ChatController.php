@@ -15,6 +15,8 @@ class ChatController extends Controller
         $currentUser = Auth::user();
 
         $room = $request->input('room');
+        $gender = $request->input('gender'); // пол текущего пользователя
+        $preferGender = $request->input('preferGender', 'female'); // кого искать: female, male, any
         if (!$room) {
             return response()->json(['message' => 'Room is required.'], 422);
         }
@@ -25,13 +27,25 @@ class ChatController extends Controller
         $currentUser->searching_room = $room;
         $currentUser->save();
 
-        // 2. Попытаться найти партнера только в этой комнате
-        $partner = User::where('is_searching_for_partner', true)
+        // 2. Попытаться найти партнера с нужным полом
+        $partnerQuery = User::where('is_searching_for_partner', true)
             ->where('id', '!=', $currentUser->id)
             ->where('searching_room', $room)
-            ->where('searching_started_at', '>=', Carbon::now()->subMinutes(5))
-            ->orderBy('searching_started_at', 'asc')
-            ->first();
+            ->where('searching_started_at', '>=', Carbon::now()->subMinutes(5));
+
+        if ($preferGender === 'female') {
+            $partnerQuery->where('gender', 'female');
+        } elseif ($preferGender === 'male') {
+            $partnerQuery->where('gender', 'male');
+        }
+        // preferGender === 'any' — не фильтруем по полу
+
+        $partner = $partnerQuery->orderBy('searching_started_at', 'asc')->first();
+
+        if ($preferGender === 'female' && !$partner) {
+            // Нет женщин в поиске
+            return response()->json(['message' => 'no_female_found'], 200);
+        }
 
         if ($partner) {
             // Партнер найден. Сбрасываем флаги поиска для обоих.
