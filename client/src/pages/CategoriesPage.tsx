@@ -15,6 +15,7 @@ interface CategoryUser {
   id: number;
   name: string | null;
   username?: string | null;
+  email?: string | null;
 }
 
 interface Category {
@@ -71,13 +72,6 @@ const CategoriesPage = () => {
   const { t } = useTranslation();
   const [selectedRoom, setSelectedRoom] = useState<Category | null>(null);
   const [roomUsers, setRoomUsers] = useState<any[]>([]); // UserProfile[]
-
-  // Моковые пользователи для примера
-  const mockRoomUsers = [
-    { id: 1, name: 'Анна', avatar_url: null, cameraPreview: null },
-    { id: 2, name: 'Иван', avatar_url: null, cameraPreview: null },
-    { id: 3, name: 'Мария', avatar_url: null, cameraPreview: null },
-  ];
 
   useEffect(() => {
     fetchCategories();
@@ -138,8 +132,8 @@ const CategoriesPage = () => {
 
   const handleEnterRoom = (room: Category) => {
     setSelectedRoom(room);
-    // TODO: заменить на реальный API
-    setRoomUsers(mockRoomUsers);
+    // TODO: здесь будет реальный API для получения пользователей комнаты
+    setRoomUsers([]); // пока пусто
   };
   const handleLeaveRoom = () => {
     setSelectedRoom(null);
@@ -174,10 +168,10 @@ const CategoriesPage = () => {
           {/* Аватар пользователя */}
           <a
             href="/profile"
-            className="group"
+            className="group flex flex-col items-center justify-center text-center"
             title={user?.username || user?.name || 'Профиль'}
           >
-            <div className="w-12 h-12 rounded-full border-2 border-rulet-purple shadow-lg bg-black/60 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+            <div className="w-12 h-12 rounded-full border-2 border-rulet-purple shadow-lg bg-black/60 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform mx-auto">
               {user?.avatar_url ? (
                 <img
                   src={getAvatarUrl(user.avatar_url)}
@@ -189,6 +183,9 @@ const CategoriesPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
                 </svg>
               )}
+            </div>
+            <div className="text-xs text-gray-300 text-center mt-1 break-words whitespace-normal">
+              @{user?.username || user?.email || user?.name}
             </div>
           </a>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -260,6 +257,10 @@ const CategoriesPage = () => {
                   ) : (
                     <span className="text-3xl font-bold text-white">{user.name[0]}</span>
                   )}
+                </div>
+                {/* Никнейм под иконкой */}
+                <div className="text-xs text-gray-400 mb-1">
+                  @{user.username || user.email || user.name}
                 </div>
                 <div className="font-semibold text-white mb-1">{user.name}</div>
                 {/* Здесь можно добавить превью камеры, если есть */}
