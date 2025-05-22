@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import VideoChat from '@/components/VideoChat';
-import ChatBox from '@/components/ChatBox';
 import NavBar from '@/components/NavBar';
 import GenderVerification from '@/components/GenderVerification';
 import { useToast } from "@/components/ui/use-toast";
@@ -141,11 +140,7 @@ const VideoChatPage = () => {
         </div>
       )}
       <VideoChat room={roomName} />
-      <ChatBox
-        isOpen={isChatOpen}
-        onToggle={() => setIsChatOpen(!isChatOpen)}
-        connected={isConnected}
-      />
+     
       <NavBar />
     </div>
   );

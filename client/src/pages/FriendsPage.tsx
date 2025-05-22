@@ -13,7 +13,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
-import ChatBox from '@/components/ChatBox';
 
 // Типы для данных с бэкенда
 interface UserProfile {
@@ -619,12 +618,7 @@ const FriendsPage = () => {
             </Button>
           </div>
           {/* ChatBox UI (локальный state сообщений) */}
-          <ChatBox
-            isOpen={true}
-            onToggle={() => setOpenChatWith(null)}
-            connected={true}
-            // Можно добавить пропсы для передачи имени/аватара друга
-          />
+          
         </div>
       )}
 
