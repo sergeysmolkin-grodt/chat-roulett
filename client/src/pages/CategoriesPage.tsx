@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import App from '../App';
+import { useNavigate } from 'react-router-dom';
 
 interface CategoryUser {
   id: number;
@@ -72,6 +73,7 @@ const CategoriesPage = () => {
   const { t } = useTranslation();
   const [selectedRoom, setSelectedRoom] = useState<Category | null>(null);
   const [roomUsers, setRoomUsers] = useState<any[]>([]); // UserProfile[]
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCategories();
@@ -146,8 +148,7 @@ const CategoriesPage = () => {
 
   // Добавим обработчик для входа в чат комнаты
   const handleEnterRoomChat = (room: Category) => {
-    // TODO: здесь должен быть переход к VideoChat или модалка чата
-    alert('Вход в чат комнаты: ' + room.name);
+    navigate('/chat', { state: { roomName: room.name } });
   };
 
   if (!isAuthenticated || !user) {

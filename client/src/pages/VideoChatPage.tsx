@@ -1,12 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import VideoChat from '@/components/VideoChat';
 import ChatBox from '@/components/ChatBox';
 import NavBar from '@/components/NavBar';
 import GenderVerification from '@/components/GenderVerification';
 import { useToast } from "@/components/ui/use-toast";
+import { useLocation } from 'react-router-dom';
 
 const VideoChatPage = () => {
+  const location = useLocation();
+  const roomName = location.state?.roomName;
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -133,21 +135,18 @@ const VideoChatPage = () => {
 
   return (
     <div className="h-screen overflow-hidden">
-      <VideoChat
-        localStream={localStream}
-        remoteStream={remoteStream}
-        isSearching={isSearching}
-        onNext={handleNext}
-        onStop={handleStop}
-      />
-      
+      {roomName && (
+        <div className="w-full bg-black/70 border-b border-rulet-purple/30 py-3 px-6 text-center">
+          <span className="text-lg font-semibold text-rulet-purple">{roomName}</span>
+        </div>
+      )}
+      <VideoChat room={roomName} />
       <ChatBox
         isOpen={isChatOpen}
         onToggle={() => setIsChatOpen(!isChatOpen)}
         connected={isConnected}
       />
-      
-      <NavBar isPremium={isPremiumUser} />
+      <NavBar />
     </div>
   );
 };

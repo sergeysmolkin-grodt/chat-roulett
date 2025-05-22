@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import * as apiService from '@/services/apiService';
 
-const VideoChat = () => {
+interface VideoChatProps { room?: string }
+const VideoChat = ({ room }: VideoChatProps) => {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const currentUserId = user ? user.id : null;
   
@@ -85,6 +86,10 @@ const VideoChat = () => {
   };
 
   const handleInitiatePartnerSearch = async () => {
+    if (!room) {
+      toast({ variant: 'destructive', description: 'Room is required for chat.' });
+      return;
+    }
     if (!currentUserId) {
       alert("Please login first.");
       return;
@@ -98,7 +103,7 @@ const VideoChat = () => {
     setIsSearching(true);
     setIsSearchingRandom(true);
     try {
-      const response = await apiService.findPartner();
+      const response = await apiService.findPartner(room);
       if (response.data && response.data.partner_id) {
         toast({ description: `Partner found: ${response.data.partner_id}. Connecting...` });
         startCall(response.data.partner_id);

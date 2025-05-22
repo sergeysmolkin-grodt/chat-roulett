@@ -14,41 +14,44 @@ class ChatController extends Controller
     {
         $currentUser = Auth::user();
 
-        // 1. Пометить текущего пользователя как ищущего
+        $room = $request->input('room');
+        if (!$room) {
+            return response()->json(['message' => 'Room is required.'], 422);
+        }
+
+        // 1. Пометить текущего пользователя как ищущего в конкретной комнате
         $currentUser->is_searching_for_partner = true;
         $currentUser->searching_started_at = Carbon::now();
+        $currentUser->searching_room = $room;
         $currentUser->save();
 
-        // 2. Попытаться найти партнера
-        // Ищем другого пользователя, который также ищет, не является текущим пользователем,
-        // и начал искать не слишком давно (например, в течение последних 5 минут, чтобы избежать "зависших" поисков)
-        // Также, для рулетки, обычно ищут партнера другого пола (если это важно для вашего приложения)
-        // Пока что сделаем простой поиск без учета пола.
+        // 2. Попытаться найти партнера только в этой комнате
         $partner = User::where('is_searching_for_partner', true)
             ->where('id', '!=', $currentUser->id)
-            // ->where('gender', '!=', $currentUser->gender) // Раскомментируйте, если нужен поиск по противоположному полу
+            ->where('searching_room', $room)
             ->where('searching_started_at', '>=', Carbon::now()->subMinutes(5))
-            ->orderBy('searching_started_at', 'asc') // Находим того, кто ждет дольше
+            ->orderBy('searching_started_at', 'asc')
             ->first();
 
         if ($partner) {
             // Партнер найден. Сбрасываем флаги поиска для обоих.
             $partner->is_searching_for_partner = false;
             $partner->searching_started_at = null;
+            $partner->searching_room = null;
             $partner->save();
 
             $currentUser->is_searching_for_partner = false;
             $currentUser->searching_started_at = null;
+            $currentUser->searching_room = null;
             $currentUser->save();
 
             return response()->json([
                 'message' => 'Partner found.',
                 'partner_id' => $partner->id,
-                // Можно также вернуть partner_name или другую информацию, если нужно
             ]);
         } else {
             // Партнер не найден
-            return response()->json(['message' => 'No partner found at the moment. Still searching...'], 200); // или 404, если предпочитаете
+            return response()->json(['message' => 'No partner found at the moment. Still searching...'], 200);
         }
     }
 
