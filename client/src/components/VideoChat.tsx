@@ -282,36 +282,6 @@ const VideoChat = ({ room }: VideoChatProps) => {
   }, []);
 
   // --- Логгер ---
-  const webLogs: string[] = [];
-  const origConsole = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-    info: console.info,
-    debug: console.debug,
-  };
-  ['log', 'warn', 'error', 'info', 'debug'].forEach((level) => {
-    // @ts-ignore
-    console[level] = (...args: any[]) => {
-      const msg = `[${new Date().toISOString()}] [${level.toUpperCase()}] ` + args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-      webLogs.push(msg);
-      // @ts-ignore
-      origConsole[level](...args);
-    };
-  });
-  function downloadLogs() {
-    const blob = new Blob([webLogs.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'logs.txt';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-  }
   // --- конец логгера ---
 
   if (isAuthLoading) {
@@ -325,13 +295,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   return (
     <div className="relative w-full h-screen overflow-hidden bg-rulet-dark">
       {/* Кнопка скачивания логов */}
-      <button
-        onClick={downloadLogs}
-        style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000 }}
-        className="bg-gray-800 text-white px-3 py-1 rounded shadow hover:bg-rulet-purple transition"
-      >
-        Скачать логи
-      </button>
+     
       {showGenderSwitch && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-black/80 p-4 rounded-xl border border-rulet-purple text-center shadow-lg">
           <div className="mb-2 text-white">Нет девушек в поиске. Кого искать?</div>
