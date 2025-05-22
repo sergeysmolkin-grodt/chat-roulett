@@ -74,7 +74,13 @@ const FriendsPage = () => {
   const [openChatWith, setOpenChatWith] = useState<UserProfile | null>(null);
   const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 24, y: window.innerHeight - 440 });
   const chatBoxRef = useRef<HTMLDivElement>(null);
-  const dragData = useRef<{ offsetX: number; offsetY: number; dragging: boolean }>({ offsetX: 0, offsetY: 0, dragging: false });
+  const dragData = useRef<{
+    startMouseX: number;
+    startMouseY: number;
+    startPopupX: number;
+    startPopupY: number;
+    dragging: boolean;
+  }>({ startMouseX: 0, startMouseY: 0, startPopupX: 0, startPopupY: 0, dragging: false });
 
   const fetchFriends = async () => {
     setIsLoadingFriends(true);
@@ -220,14 +226,16 @@ const FriendsPage = () => {
   const handleDragStart = (e: React.MouseEvent) => {
     if (!chatBoxRef.current) return;
     dragData.current.dragging = true;
-    dragData.current.offsetX = e.clientX - chatPosition.x;
-    dragData.current.offsetY = e.clientY - chatPosition.y;
+    dragData.current.startMouseX = e.clientX;
+    dragData.current.startMouseY = e.clientY;
+    dragData.current.startPopupX = chatPosition.x;
+    dragData.current.startPopupY = chatPosition.y;
     document.body.style.userSelect = 'none';
   };
   const handleDrag = (e: MouseEvent) => {
     if (!dragData.current.dragging) return;
-    let newX = e.clientX - dragData.current.offsetX;
-    let newY = e.clientY - dragData.current.offsetY;
+    let newX = dragData.current.startPopupX + (e.clientX - dragData.current.startMouseX);
+    let newY = dragData.current.startPopupY + (e.clientY - dragData.current.startMouseY);
     // Ограничения по границам окна
     const box = chatBoxRef.current;
     const width = box?.offsetWidth || 400;
@@ -250,7 +258,7 @@ const FriendsPage = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [openChatWith, chatPosition]);
+  }, [openChatWith]);
 
   if (!isAuthenticated) {
     return <div className="min-h-screen bg-rulet-dark text-white flex items-center justify-center"><p>{t('friendsPage.error')}</p></div>;
@@ -556,11 +564,36 @@ const FriendsPage = () => {
         </div>
       )}
 
-      {/* Popup ChatBox в левом нижнем углу */}
+      {/* Popup ChatBox — draggable */}
       {openChatWith && (
-        <div className="fixed bottom-4 left-4 w-96 max-w-full bg-black/80 border border-rulet-purple/40 rounded-xl shadow-2xl z-50 flex flex-col animate-fade-in">
-          {/* Header */}
-          <div className="flex items-center gap-3 p-3 border-b border-rulet-purple/30 bg-black/70 rounded-t-xl">
+        <div
+          ref={chatBoxRef}
+          style={{
+            position: 'fixed',
+            left: chatPosition.x,
+            top: chatPosition.y,
+            width: 384, // w-96
+            maxWidth: '100%',
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.8)',
+            border: '1px solid rgba(128,90,213,0.4)',
+            borderRadius: '1rem',
+            boxShadow: '0 10px 40px 0 rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'fade-in 0.2s',
+            transition: 'left 0.15s cubic-bezier(.4,2,.6,1), top 0.15s cubic-bezier(.4,2,.6,1)',
+            pointerEvents: 'auto',
+            userSelect: dragData.current.dragging ? 'none' : 'auto',
+          }}
+          className="shadow-2xl animate-fade-in"
+        >
+          {/* Header — drag handle */}
+          <div
+            className="flex items-center gap-3 p-3 border-b border-rulet-purple/30 bg-black/70 rounded-t-xl cursor-move select-none"
+            onMouseDown={handleDragStart}
+            style={{ cursor: 'move', userSelect: 'none' }}
+          >
             <div className="w-10 h-10 rounded-full overflow-hidden border border-rulet-purple/40">
               {openChatWith.avatar_url ? (
                 <img src={getAvatarUrl(openChatWith.avatar_url)} alt="avatar" className="w-full h-full object-cover" />

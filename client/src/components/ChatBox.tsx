@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +66,7 @@ const ChatBox = ({ isOpen, onToggle, connected }: ChatBoxProps) => {
   };
 
   return (
-    <div className={`fixed bottom-16 right-0 w-80 bg-black/60 backdrop-blur-sm border border-rulet-purple/30 rounded-l-lg transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : 'translate-x-full'} z-10`}>
+    <div className="flex flex-col h-full w-full bg-black/60 backdrop-blur-sm border border-rulet-purple/30 rounded-b-xl">
       {/* Chat toggle button */}
       <Button 
         onClick={onToggle}
@@ -89,7 +88,7 @@ const ChatBox = ({ isOpen, onToggle, connected }: ChatBoxProps) => {
         </svg>
       </Button>
 
-      <div className="flex flex-col h-64">
+      <div className="flex flex-col h-64 flex-1">
         <div className="p-2 border-b border-rulet-purple/30">
           <h3 className="text-center text-white text-sm">Chat</h3>
         </div>

@@ -69,6 +69,15 @@ const CategoriesPage = () => {
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useTranslation();
+  const [selectedRoom, setSelectedRoom] = useState<Category | null>(null);
+  const [roomUsers, setRoomUsers] = useState<any[]>([]); // UserProfile[]
+
+  // Моковые пользователи для примера
+  const mockRoomUsers = [
+    { id: 1, name: 'Анна', avatar_url: null, cameraPreview: null },
+    { id: 2, name: 'Иван', avatar_url: null, cameraPreview: null },
+    { id: 3, name: 'Мария', avatar_url: null, cameraPreview: null },
+  ];
 
   useEffect(() => {
     fetchCategories();
@@ -125,6 +134,26 @@ const CategoriesPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEnterRoom = (room: Category) => {
+    setSelectedRoom(room);
+    // TODO: заменить на реальный API
+    setRoomUsers(mockRoomUsers);
+  };
+  const handleLeaveRoom = () => {
+    setSelectedRoom(null);
+    setRoomUsers([]);
+  };
+  const handleStartChatWith = (userId: number) => {
+    // TODO: инициировать чат с выбранным пользователем
+    alert('Начать общение с пользователем ID ' + userId);
+  };
+
+  // Добавим обработчик для входа в чат комнаты
+  const handleEnterRoomChat = (room: Category) => {
+    // TODO: здесь должен быть переход к VideoChat или модалка чата
+    alert('Вход в чат комнаты: ' + room.name);
   };
 
   if (!isAuthenticated || !user) {
@@ -215,7 +244,31 @@ const CategoriesPage = () => {
         </div>
       </div>
 
-      {isLoading ? (
+      {/* Если выбрана комната — показываем пользователей */}
+      {selectedRoom ? (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-rulet-purple">{selectedRoom.name}</h2>
+            <Button variant="outline" className="border-rulet-purple text-rulet-purple" onClick={handleLeaveRoom}>Выйти</Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {roomUsers.map(user => (
+              <Card key={user.id} className="bg-black/60 border-rulet-purple/30 flex flex-col items-center p-4">
+                <div className="w-20 h-20 rounded-full bg-rulet-purple/30 flex items-center justify-center mb-2 overflow-hidden">
+                  {user.avatar_url ? (
+                    <img src={getAvatarUrl(user.avatar_url)} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl font-bold text-white">{user.name[0]}</span>
+                  )}
+                </div>
+                <div className="font-semibold text-white mb-1">{user.name}</div>
+                {/* Здесь можно добавить превью камеры, если есть */}
+                <Button className="mt-2 bg-rulet-purple hover:bg-rulet-purple-dark w-full" onClick={() => handleStartChatWith(user.id)}>Общаться</Button>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(3)].map((_, index) => (
                 <Card key={index} className="bg-rulet-chat-bg border-rulet-chat-outline animate-pulse">
@@ -238,7 +291,7 @@ const CategoriesPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category) => (
-            <Card key={category.id} className="bg-rulet-chat-bg border-rulet-chat-outline text-white flex flex-col justify-between hover:shadow-lg hover:shadow-rulet-purple/30 transition-shadow">
+            <Card key={category.id} className="bg-rulet-chat-bg border-rulet-chat-outline text-white flex flex-col justify-between hover:shadow-lg hover:shadow-rulet-purple/30 transition-shadow cursor-pointer" onClick={() => handleEnterRoom(category)}>
               <CardHeader>
                 <CardTitle className="text-xl text-rulet-purple">{category.name}</CardTitle>
                 <CardDescription className="text-gray-400">
@@ -251,8 +304,7 @@ const CategoriesPage = () => {
                 </p>
               </CardContent>
               <CardFooter className="flex justify-between items-center">
-                {/* <p className="text-xs text-gray-500">0 people chatting</p>  Placeholder for active users */}
-                <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple hover:text-white">
+                <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple hover:text-white" onClick={e => { e.stopPropagation(); handleEnterRoomChat(category); }}>
                   {t('roomsPage.joinButton')}
                 </Button>
               </CardFooter>
