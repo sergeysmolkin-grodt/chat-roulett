@@ -19,7 +19,7 @@ const ICE_SERVERS = [
   // Добавь TURN серверы для более надежного соединения через NAT/Firewall, если необходимо
 ];
 
-const LOCAL_STORAGE_CAMERA_ID_KEY = 'selectedCameraId';
+const LOCAL_STORAGE_CAMERA_ID_KEY = 'selectedCameraId'; // оставить, но не использовать
 
 export const useWebRTC = (currentUserId: number | null) => {
   const [webRTCState, setWebRTCState] = useState<WebRTCState>({
@@ -28,48 +28,41 @@ export const useWebRTC = (currentUserId: number | null) => {
     isCallActive: false,
     incomingCall: null,
     availableVideoDevices: [],
-    selectedVideoDeviceId: null, // Изначально null, будет из localStorage или дефолтный
+    selectedVideoDeviceId: null, // всегда null по умолчанию
     isInitializingStream: false,
   });
   const peerConnection = useRef<RTCPeerConnection | null>(null);
-  const peerConnectionPartnerId = useRef<number | null>(null); // ID собеседника
+  const peerConnectionPartnerId = useRef<number | null>(null);
 
   const getVideoDevices = useCallback(async () => {
-    console.log('getVideoDevices called');
+    console.log('[WebRTC] getVideoDevices called');
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
       let currentSelectedId = webRTCState.selectedVideoDeviceId;
-      if (!currentSelectedId) { // Пробуем из localStorage, если еще не в state
-        currentSelectedId = localStorage.getItem(LOCAL_STORAGE_CAMERA_ID_KEY);
-      }
-
       if (videoDevices.length > 0) {
         const isValidSelectedId = videoDevices.some(device => device.deviceId === currentSelectedId);
         if (!currentSelectedId || !isValidSelectedId) {
-          currentSelectedId = videoDevices[0].deviceId; // Берем первую, если нет валидной сохраненной
-          localStorage.setItem(LOCAL_STORAGE_CAMERA_ID_KEY, currentSelectedId!);
+          currentSelectedId = videoDevices[0].deviceId;
         }
       } else {
-        currentSelectedId = null; // Нет камер - нет ID
-        localStorage.removeItem(LOCAL_STORAGE_CAMERA_ID_KEY);
+        currentSelectedId = null;
       }
-      
       setWebRTCState(prev => ({
          ...prev,
          availableVideoDevices: videoDevices,
          selectedVideoDeviceId: currentSelectedId
       }));
-      return currentSelectedId; // Возвращаем ID для немедленного использования
+      return { videoDevices, currentSelectedId };
     } catch (error) {
       console.error("Error enumerating video devices:", error);
       setWebRTCState(prev => ({ ...prev, availableVideoDevices: [], selectedVideoDeviceId: null }));
-      return null;
+      return { videoDevices: [], currentSelectedId: null };
     }
-  }, [webRTCState.selectedVideoDeviceId]); // Зависимость от selectedVideoDeviceId, чтобы перепроверить, если он изменился извне
+  }, [webRTCState.selectedVideoDeviceId]);
 
   const initializeLocalStream = useCallback(async (deviceIdToUse?: string) => {
+    console.log('[WebRTC] initializeLocalStream called', deviceIdToUse);
     if (webRTCState.isInitializingStream) {
         console.warn('Stream initialization already in progress.');
         return null;
@@ -78,45 +71,62 @@ export const useWebRTC = (currentUserId: number | null) => {
 
     if (webRTCState.localStream) {
         webRTCState.localStream.getTracks().forEach(track => track.stop());
-        setWebRTCState(prev => ({ ...prev, localStream: null })); // Сначала сбрасываем старый стрим
+        setWebRTCState(prev => ({ ...prev, localStream: null }));
     }
 
-    const targetDeviceId = deviceIdToUse || webRTCState.selectedVideoDeviceId;
-    console.log('Attempting to initialize local stream with deviceId:', targetDeviceId);
+    const { videoDevices, currentSelectedId } = await getVideoDevices();
+    let targetDeviceId = deviceIdToUse || currentSelectedId;
+    let triedOBS = false;
+    let stream: MediaStream | null = null;
+    let lastError: any = null;
 
-    if (!targetDeviceId && webRTCState.availableVideoDevices.length > 0) {
-        // Если deviceIdToUse не передан, и selectedVideoDeviceId еще не установлен,
-        // но камеры есть, это может быть первый запуск. getVideoDevices должен был установить selectedVideoDeviceId.
-        // На всякий случай, можно попытаться получить его еще раз или использовать первую камеру.
-        console.warn('Target device ID is null, but cameras are available. Trying to pick one.');
-        // const fallbackId = webRTCState.availableVideoDevices[0].deviceId;
-        // Это состояние должно быть уже обработано в getVideoDevices
-    }
-
-    const constraints: MediaStreamConstraints = {
-        audio: true, 
-        video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : (webRTCState.availableVideoDevices.length > 0 ? true : false),
+    const tryGetStream = async (deviceId: string | null) => {
+      const constraints: MediaStreamConstraints = {
+        audio: true,
+        video: deviceId ? { deviceId: { exact: deviceId } } : (videoDevices.length > 0 ? true : false),
+      };
+      try {
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        return s;
+      } catch (err) {
+        lastError = err;
+        return null;
+      }
     };
 
-    if (!constraints.video) {
-        console.warn("No video constraints, cannot initialize stream without camera.");
-        setWebRTCState(prev => ({ ...prev, isInitializingStream: false, localStream: null }));
-        return null;
+    // 1. Пробуем обычную (первую) камеру
+    if (targetDeviceId) {
+      stream = await tryGetStream(targetDeviceId);
+      if (stream) {
+        console.log('[WebRTC] Успешно получили stream с обычной камерой:', targetDeviceId);
+      } else {
+        console.warn('[WebRTC] Не удалось получить stream с обычной камерой:', targetDeviceId, lastError);
+      }
     }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setWebRTCState(prev => ({ 
-          ...prev, 
-          localStream: stream, 
-          selectedVideoDeviceId: targetDeviceId || prev.selectedVideoDeviceId, // Обновляем, если targetDeviceId был из параметра
-          isInitializingStream: false 
-        }));
-
-      if (targetDeviceId) {
-        localStorage.setItem(LOCAL_STORAGE_CAMERA_ID_KEY, targetDeviceId);
+    // 2. Если не удалось — ищем OBS Virtual Camera
+    if (!stream && videoDevices.length > 0) {
+      const obsDevice = videoDevices.find(d => d.label && d.label.toLowerCase().includes('obs'));
+      if (obsDevice) {
+        triedOBS = true;
+        console.log('[WebRTC] Пробуем OBS Virtual Camera:', obsDevice.deviceId, obsDevice.label);
+        stream = await tryGetStream(obsDevice.deviceId);
+        if (stream) {
+          targetDeviceId = obsDevice.deviceId;
+          console.log('[WebRTC] Успешно получили stream с OBS Virtual Camera:', obsDevice.deviceId);
+        } else {
+          console.warn('[WebRTC] Не удалось получить stream с OBS Virtual Camera:', obsDevice.deviceId, lastError);
+        }
       }
-      
+    }
+
+    if (stream) {
+      setWebRTCState(prev => ({
+          ...prev,
+          localStream: stream,
+          selectedVideoDeviceId: targetDeviceId || prev.selectedVideoDeviceId,
+          isInitializingStream: false
+        }));
       if (peerConnection.current && peerConnection.current.signalingState !== 'closed') {
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
@@ -129,34 +139,30 @@ export const useWebRTC = (currentUserId: number | null) => {
         }
       }
       return stream;
-    } catch (error) {
-      console.error(`Error accessing media devices (targetId: ${targetDeviceId}):`, error);
-      if (targetDeviceId) { // Если была попытка с конкретным ID и она провалилась
-        localStorage.removeItem(LOCAL_STORAGE_CAMERA_ID_KEY);
-        setWebRTCState(prev => ({...prev, selectedVideoDeviceId: null, isInitializingStream: false}));
-        // Повторный вызов initializeLocalStream() без deviceId для попытки с дефолтной камерой
-        // Это может создать цикл, если и дефолтная не работает. Осторожно.
-        // Лучше, если getVideoDevices сам выберет следующую доступную или первую.
-        // Пока оставим так: если не вышло с ID, то следующий вызов getVideoDevices сам подберет.
+    } else {
+      setWebRTCState(prev => ({ ...prev, selectedVideoDeviceId: null, isInitializingStream: false, localStream: null }));
+      if (triedOBS) {
+        console.error('[WebRTC] Не удалось получить доступ ни к одной камере, включая OBS Virtual Camera.');
       } else {
-        setWebRTCState(prev => ({ ...prev, localStream: null, isInitializingStream: false }));
+        console.error('[WebRTC] Не удалось получить доступ к обычной камере. OBS Virtual Camera не найдена.');
       }
       return null;
     }
-  }, [webRTCState.selectedVideoDeviceId, webRTCState.localStream, webRTCState.isInitializingStream, webRTCState.availableVideoDevices]);
+  }, [webRTCState.selectedVideoDeviceId, webRTCState.localStream, webRTCState.isInitializingStream, webRTCState.availableVideoDevices, getVideoDevices]);
   
   useEffect(() => {
     // Получаем устройства и затем инициализируем стрим с выбранным/дефолтным ID
     const setupMedia = async () => {
         if (!webRTCState.localStream && !webRTCState.isInitializingStream) {
-            const deviceId = await getVideoDevices(); // Получаем/обновляем список и выбранный ID
-            if (deviceId || webRTCState.availableVideoDevices.length > 0) { // Если есть камеры
-                initializeLocalStream(deviceId); // deviceId может быть null, если камер нет, но getVideoDevices должен это учесть
+            const { currentSelectedId, videoDevices } = await getVideoDevices();
+            if (currentSelectedId || videoDevices.length > 0) { // Если есть камеры
+                initializeLocalStream(currentSelectedId); // currentSelectedId может быть null, если камер нет
             } else {
                 console.warn("No video devices found, cannot initialize stream.");
             }
         }
     };
+    console.log('[WebRTC] useEffect: setupMedia');
     setupMedia();
 
     navigator.mediaDevices.addEventListener('devicechange', setupMedia); // Перенастраиваем при смене устройств
@@ -168,19 +174,22 @@ export const useWebRTC = (currentUserId: number | null) => {
   
   // 2. Создание и настройка RTCPeerConnection
   const createPeerConnection = useCallback((partnerId: number): RTCPeerConnection => {
-    console.log('Creating new PeerConnection for partner:', partnerId);
+    console.log('[WebRTC] Creating new PeerConnection for partner:', partnerId);
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     pc.onicecandidate = event => {
       if (event.candidate && currentUserId) {
-        console.log('Sending ICE candidate to', partnerId, ':', event.candidate);
+        console.log('[WebRTC] onicecandidate: Sending ICE candidate to', partnerId, event.candidate);
         apiService.post(`/video/ice-candidate/${partnerId}`, { candidate: event.candidate })
-          .catch(err => console.error("Error sending ICE candidate", err));
+          .catch(err => console.error('[WebRTC] Error sending ICE candidate', err));
       }
     };
 
     pc.ontrack = event => {
-      console.log('Remote track received:', event.streams[0]);
+      console.log('[WebRTC] ontrack: Received remote stream', event.streams, event.track, {
+        peerConnection: pc,
+        signalingState: pc.signalingState,
+      });
       setWebRTCState(prev => ({ ...prev, remoteStream: event.streams[0] }));
     };
     
@@ -192,11 +201,24 @@ export const useWebRTC = (currentUserId: number | null) => {
 
     peerConnection.current = pc;
     peerConnectionPartnerId.current = partnerId;
+
+    if (peerConnection.current) {
+      peerConnection.current.oniceconnectionstatechange = () => {
+        console.log('[WebRTC] ICE connection state:', peerConnection.current?.iceConnectionState);
+      };
+      peerConnection.current.onconnectionstatechange = () => {
+        console.log('[WebRTC] Connection state:', peerConnection.current?.connectionState);
+      };
+      peerConnection.current.onerror = (e) => {
+        console.error('[WebRTC] PeerConnection error', e);
+      };
+    }
+
     return pc;
   }, [currentUserId]);
 
   const hangUp = useCallback((notifyPeer = true) => {
-    console.log('Hanging up call.');
+    console.log('[WebRTC] Hanging up call. notifyPeer:', notifyPeer);
     if (peerConnection.current) {
       peerConnection.current.close();
       peerConnection.current = null;
@@ -227,11 +249,15 @@ export const useWebRTC = (currentUserId: number | null) => {
     const channelName = `private-video-chat.${currentUserId}`;
     const privateChannel = echo.private(channelName);
 
-    console.log(`Subscribing to ${channelName}`);
+    console.log(`[WebRTC] Subscribing to ${channelName}`);
 
     privateChannel
       .listen('.new-user-joined', async (data: { offer: RTCSessionDescriptionInit, fromUserId: number }) => {
-        console.log('Received offer from', data.fromUserId, data);
+        console.log('[WebRTC] .new-user-joined: Received offer from', data.fromUserId, data, {
+          peerConnection: peerConnection.current,
+          isCallActive: webRTCState.isCallActive,
+          incomingCall: webRTCState.incomingCall,
+        });
         if (peerConnection.current && peerConnection.current.signalingState !== 'closed') {
             console.warn('PeerConnection already exists or call is active, ignoring new offer for now.');
             return;
@@ -239,7 +265,10 @@ export const useWebRTC = (currentUserId: number | null) => {
         setWebRTCState(prev => ({ ...prev, incomingCall: { fromUserId: data.fromUserId, offer: data.offer } }));
       })
       .listen('.answer-made', async (data: { answer: RTCSessionDescriptionInit, fromUserId: number }) => {
-        console.log('Received answer from', data.fromUserId, data);
+        console.log('[WebRTC] .answer-made: Received answer from', data.fromUserId, data, {
+          peerConnection: peerConnection.current,
+          signalingState: peerConnection.current?.signalingState,
+        });
         if (peerConnection.current && data.fromUserId === peerConnectionPartnerId.current) {
           try {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -253,7 +282,10 @@ export const useWebRTC = (currentUserId: number | null) => {
         }
       })
       .listen('.ice-candidate-sent', async (data: { candidate: RTCIceCandidateInit, fromUserId: number }) => {
-        console.log('Received ICE candidate from', data.fromUserId, data);
+        console.log('[WebRTC] .ice-candidate-sent: Received ICE from', data.fromUserId, data, {
+          peerConnection: peerConnection.current,
+          signalingState: peerConnection.current?.signalingState,
+        });
         if (peerConnection.current && data.candidate && data.fromUserId === peerConnectionPartnerId.current) {
           try {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -266,16 +298,16 @@ export const useWebRTC = (currentUserId: number | null) => {
         }
       })
       .listen('.call-ended', (data: { fromUserId: number }) => {
-        console.log('Received call ended from', data.fromUserId);
+        console.log('[WebRTC] .call-ended: Received call ended from', data.fromUserId);
         if (data.fromUserId === peerConnectionPartnerId.current) {
           hangUp(false);
         }
       })
-      .subscribed(() => console.log(`Successfully subscribed to ${channelName}!`))
-      .error((error: any) => console.error(`Subscription error for ${channelName}:`, error));
+      .subscribed(() => console.log(`[WebRTC] Successfully subscribed to ${channelName}!`))
+      .error((error: any) => console.error(`[WebRTC] Subscription error for ${channelName}:`, error));
 
     return () => {
-      console.log(`Leaving channel ${channelName}`);
+      console.log(`[WebRTC] Leaving channel ${channelName}`);
       echo.leave(channelName);
       // Важно: не вызываем hangUp здесь напрямую, чтобы избежать циклов или неожиданного поведения при смене currentUserId.
       // Очистка peerConnection должна происходить либо при явном hangUp, либо при размонтировании VideoChat компонента.
@@ -285,6 +317,7 @@ export const useWebRTC = (currentUserId: number | null) => {
 
   // 4. Функции управления звонком
   const startCall = useCallback(async (targetUserId: number) => {
+    console.log('[WebRTC] startCall called. Target:', targetUserId);
     let currentLocalStream = webRTCState.localStream;
     if (!currentLocalStream) {
       console.error("Local stream not available to start call.");
@@ -310,14 +343,15 @@ export const useWebRTC = (currentUserId: number | null) => {
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      console.log('Offer created and local description set:', offer);
+      console.log('[WebRTC] Offer created and local description set:', offer);
       await apiService.post(`/video/offer/${targetUserId}`, { offer });
     } catch (error) {
-      console.error('Error creating or sending offer:', error);
+      console.error('[WebRTC] Error creating or sending offer:', error);
     }
   }, [webRTCState.localStream, createPeerConnection, initializeLocalStream]);
 
   const acceptIncomingCall = useCallback(async () => {
+    console.log('[WebRTC] acceptIncomingCall called. From:', webRTCState.incomingCall?.fromUserId);
     if (!webRTCState.incomingCall || !currentUserId) return;
     let currentLocalStream = webRTCState.localStream;
     if (!currentLocalStream) {
@@ -344,21 +378,21 @@ export const useWebRTC = (currentUserId: number | null) => {
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      console.log('Remote description set (offer)');
+      console.log('[WebRTC] Remote description set (offer)');
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      console.log('Answer created and local description set:', answer);
+      console.log('[WebRTC] Answer created and local description set:', answer);
       await apiService.post(`/video/answer/${fromUserId}`, { answer });
       setWebRTCState(prev => ({ ...prev, isCallActive: true, incomingCall: null }));
     } catch (error) {
-      console.error('Error accepting call or sending answer:', error);
+      console.error('[WebRTC] Error accepting call or sending answer:', error);
     }
   }, [webRTCState.incomingCall, webRTCState.localStream, currentUserId, createPeerConnection, initializeLocalStream]);
   
   const rejectIncomingCall = useCallback(() => {
     if (webRTCState.incomingCall) {
         // Можно отправить уведомление об отклонении, если нужно (через API/Echo)
-        console.log('Rejecting call from', webRTCState.incomingCall.fromUserId);
+        console.log('[WebRTC] rejectIncomingCall called. From:', webRTCState.incomingCall.fromUserId);
         // Например: apiService.post(`/video/reject-call/${webRTCState.incomingCall.fromUserId}`);
         setWebRTCState(prev => ({ ...prev, incomingCall: null }));
     }

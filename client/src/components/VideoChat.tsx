@@ -45,19 +45,50 @@ const VideoChat = ({ room }: VideoChatProps) => {
   // Добавим определение премиум-статуса
   const isPremiumUser = user?.subscription_status === 'active';
 
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearTimeout(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (localVideoRef.current && localStream) {
+      console.log('[VideoChat] Назначаю localStream на localVideoRef', localStream.id, localVideoRef.current);
       localVideoRef.current.srcObject = localStream;
     }
   }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
+      console.log('[VideoChat] Назначаю remoteStream на remoteVideoRef', remoteStream.id, remoteVideoRef.current);
       remoteVideoRef.current.srcObject = remoteStream;
     } else if (!remoteStream && remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
   }, [remoteStream]);
+
+  useEffect(() => {
+    console.log('[VideoChat] user:', user, 'isAuthenticated:', isAuthenticated, 'currentUserId:', currentUserId);
+  }, [user, isAuthenticated, currentUserId]);
+
+  useEffect(() => {
+    console.log('[VideoChat] localStream:', localStream);
+  }, [localStream]);
+
+  useEffect(() => {
+    console.log('[VideoChat] remoteStream:', remoteStream);
+  }, [remoteStream]);
+
+  useEffect(() => {
+    console.log('[VideoChat] isCallActive:', isCallActive);
+  }, [isCallActive]);
+
+  useEffect(() => {
+    console.log('[VideoChat] incomingCall:', incomingCall);
+  }, [incomingCall]);
 
   const toggleMute = () => {
     if (localStream) {
@@ -94,6 +125,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   };
 
   const handleInitiatePartnerSearch = async () => {
+    console.log('[VideoChat] handleInitiatePartnerSearch called. Room:', effectiveRoom, 'user:', user);
     if (!effectiveRoom) {
       toast({ variant: 'destructive', description: 'Room is required for chat.' });
       return;
@@ -107,7 +139,6 @@ const VideoChat = ({ room }: VideoChatProps) => {
       initializeLocalStream();
       return;
     }
-    // Только для мужчин без подписки запрещаем поиск
     if (userGender === 'male' && !isPremiumUser) {
       toast({
         variant: "destructive",
@@ -116,41 +147,52 @@ const VideoChat = ({ room }: VideoChatProps) => {
       });
       return;
     }
-    // Для женщин и других — поиск всегда разрешён
     setIsSearching(true);
     setIsSearchingRandom(true);
     setShowGenderSwitch(false);
-    try {
-      const response = await apiService.findPartner({
-        room: effectiveRoom,
-        gender: userGender,
-        preferGender,
-      });
-      if (response.data && response.data.partner_id) {
-        toast({ description: `Partner found: ${response.data.partner_id}. Connecting...` });
-        startCall(response.data.partner_id);
-      } else if (response.data && response.data.message === 'no_female_found' && userGender === 'male' && preferGender === 'female') {
-        setShowGenderSwitch(true);
+    stopPolling();
+
+    const poll = async () => {
+      try {
+        const response = await apiService.findPartner({
+          room: effectiveRoom,
+          gender: userGender,
+          preferGender,
+        });
+        if (response.data && response.data.partner_id) {
+          toast({ description: `Partner found: ${response.data.partner_id}. Connecting...` });
+          startCall(response.data.partner_id);
+          setIsSearching(false);
+          setIsSearchingRandom(false);
+          stopPolling();
+        } else if (response.data && response.data.message === 'no_female_found' && userGender === 'male' && preferGender === 'female') {
+          setShowGenderSwitch(true);
+          setIsSearching(false);
+          setIsSearchingRandom(false);
+          toast({ description: 'Нет девушек в поиске. Хотите искать всех?' });
+          stopPolling();
+        } else if (isSearching) {
+          // Продолжаем polling, если поиск не отменён
+          pollingRef.current = setTimeout(poll, 1500);
+        }
+      } catch (error: any) {
+        console.error("Error finding partner:", error);
+        toast({
+          variant: "destructive",
+          description: error.response?.data?.message || "Failed to find partner. Please try again.",
+        });
         setIsSearching(false);
         setIsSearchingRandom(false);
-        toast({ description: 'Нет девушек в поиске. Хотите искать всех?' });
-      } else {
-        toast({ description: "Searching for a partner... No one available right now." });
+        stopPolling();
       }
-    } catch (error: any) {
-      console.error("Error finding partner:", error);
-      toast({
-        variant: "destructive",
-        description: error.response?.data?.message || "Failed to find partner. Please try again.",
-      });
-      setIsSearching(false);
-      setIsSearchingRandom(false);
-    }
+    };
+    poll();
   };
 
   const handleStopPartnerSearch = async () => {
     setIsSearching(false);
     setIsSearchingRandom(false);
+    stopPolling();
     try {
       await apiService.stopSearch();
       toast({ description: "Partner search stopped." });
@@ -164,6 +206,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   };
 
   const handleStartSearchOrCallNext = () => {
+    console.log('[VideoChat] handleStartSearchOrCallNext called. targetUserIdInput:', targetUserIdInput);
     if (!currentUserId) {
         alert("Please login first.");
         return;
@@ -187,12 +230,14 @@ const VideoChat = ({ room }: VideoChatProps) => {
   };
 
   const handleStopCall = () => {
+    console.log('[VideoChat] handleStopCall called.');
     hangUp();
     setIsSearching(false);
     setIsSearchingRandom(false);
   };
 
   const handleAcceptCall = () => {
+    console.log('[VideoChat] handleAcceptCall called. localStream:', localStream);
     if (!localStream) {
         alert("Please enable your camera and microphone to accept the call.");
         initializeLocalStream();
@@ -214,12 +259,60 @@ const VideoChat = ({ room }: VideoChatProps) => {
     }
   }, [isCallActive, incomingCall]);
 
+  useEffect(() => {
+    // Автоматически принимаем входящий звонок, если есть offer и звонок не активен
+    if (incomingCall && !isCallActive) {
+      console.log('[VideoChat] Auto-accepting incoming call from', incomingCall.fromUserId);
+      acceptIncomingCall();
+      setIsSearching(false);
+      setIsSearchingRandom(false);
+    }
+  }, [incomingCall, isCallActive, acceptIncomingCall]);
+
   const handleCameraSelect = (deviceId: string) => {
     if (deviceId && deviceId !== selectedVideoDeviceId) {
       console.log('Camera selected:', deviceId);
       initializeLocalStream(deviceId);
     }
   };
+
+  useEffect(() => {
+    // Остановить polling при размонтировании
+    return () => stopPolling();
+  }, []);
+
+  // --- Логгер ---
+  const webLogs: string[] = [];
+  const origConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+    info: console.info,
+    debug: console.debug,
+  };
+  ['log', 'warn', 'error', 'info', 'debug'].forEach((level) => {
+    // @ts-ignore
+    console[level] = (...args: any[]) => {
+      const msg = `[${new Date().toISOString()}] [${level.toUpperCase()}] ` + args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+      webLogs.push(msg);
+      // @ts-ignore
+      origConsole[level](...args);
+    };
+  });
+  function downloadLogs() {
+    const blob = new Blob([webLogs.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'logs.txt';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+  // --- конец логгера ---
 
   if (isAuthLoading) {
     return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Loading user...</p></div>;
@@ -231,6 +324,14 @@ const VideoChat = ({ room }: VideoChatProps) => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-rulet-dark">
+      {/* Кнопка скачивания логов */}
+      <button
+        onClick={downloadLogs}
+        style={{ position: 'absolute', top: 12, right: 12, zIndex: 10000 }}
+        className="bg-gray-800 text-white px-3 py-1 rounded shadow hover:bg-rulet-purple transition"
+      >
+        Скачать логи
+      </button>
       {showGenderSwitch && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-black/80 p-4 rounded-xl border border-rulet-purple text-center shadow-lg">
           <div className="mb-2 text-white">Нет девушек в поиске. Кого искать?</div>
