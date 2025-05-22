@@ -5,7 +5,6 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
-import * as apiService from '@/services/apiService';
 
 interface VideoChatProps { room?: string }
 const VideoChat = ({ room }: VideoChatProps) => {
@@ -45,15 +44,6 @@ const VideoChat = ({ room }: VideoChatProps) => {
 
   // Добавим определение премиум-статуса
   const isPremiumUser = user?.subscription_status === 'active';
-
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  const stopPolling = () => {
-    if (pollingRef.current) {
-      clearTimeout(pollingRef.current);
-      pollingRef.current = null;
-    }
-  };
 
   useEffect(() => {
     if (localStream && localVideoRef.current) {
@@ -120,114 +110,14 @@ const VideoChat = ({ room }: VideoChatProps) => {
     setIsFullscreen(!isFullscreen);
   };
 
-  const handleInitiatePartnerSearch = async () => {
-    console.log('[VideoChat] handleInitiatePartnerSearch called. Room:', effectiveRoom, 'user:', user);
-    if (!effectiveRoom) {
-      toast({ variant: 'destructive', description: 'Room is required for chat.' });
-      return;
-    }
-    if (!currentUserId) {
-      alert("Please login first.");
-      return;
-    }
+  const handleStartSearchOrCallNext = () => {
     if (!localStream) {
       alert("Please enable your camera and microphone first.");
       initializeLocalStream();
       return;
     }
-    if (userGender === 'male' && !isPremiumUser) {
-      toast({
-        variant: "destructive",
-        title: "Premium Required",
-        description: "Male users need a premium subscription to start chatting.",
-      });
-      return;
-    }
     setIsSearching(true);
     setIsSearchingRandom(true);
-    setShowGenderSwitch(false);
-    setSearchCancelled(false);
-    stopPolling();
-
-    const poll = async () => {
-      if (searchCancelled) return;
-      try {
-        const response = await apiService.findPartner({
-          room: effectiveRoom,
-          gender: userGender,
-          preferGender,
-        });
-        if (response.data && response.data.partner_id) {
-          toast({ description: `Partner found: ${response.data.partner_id}. Connecting...` });
-          startCall(response.data.partner_id);
-          setIsSearching(false);
-          setIsSearchingRandom(false);
-          setSearchCancelled(false);
-          stopPolling();
-        } else if (response.data && response.data.message === 'no_female_found' && userGender === 'male' && preferGender === 'female') {
-          setShowGenderSwitch(true);
-          setIsSearching(false);
-          setIsSearchingRandom(false);
-          setSearchCancelled(false);
-          toast({ description: 'Нет девушек в поиске. Хотите искать всех?' });
-          stopPolling();
-        } else if (!searchCancelled) {
-          pollingRef.current = setTimeout(poll, 1500);
-        }
-      } catch (error: any) {
-        console.error("Error finding partner:", error);
-        toast({
-          variant: "destructive",
-          description: error.response?.data?.message || "Failed to find partner. Please try again.",
-        });
-        setIsSearching(false);
-        setIsSearchingRandom(false);
-        setSearchCancelled(false);
-        stopPolling();
-      }
-    };
-    poll();
-  };
-
-  const handleStopPartnerSearch = async () => {
-    setIsSearching(false);
-    setIsSearchingRandom(false);
-    setSearchCancelled(true);
-    stopPolling();
-    try {
-      await apiService.stopSearch();
-      toast({ description: "Partner search stopped." });
-    } catch (error: any) {
-      console.error("Error stopping search:", error);
-      toast({
-        variant: "destructive",
-        description: error.response?.data?.message || "Failed to stop search.",
-      });
-    }
-  };
-
-  const handleStartSearchOrCallNext = () => {
-    console.log('[VideoChat] handleStartSearchOrCallNext called. targetUserIdInput:', targetUserIdInput);
-    if (!currentUserId) {
-        alert("Please login first.");
-        return;
-    }
-    if (!localStream) {
-        alert("Please enable your camera and microphone first.");
-        initializeLocalStream();
-        return;
-    }
-    const targetId = parseInt(targetUserIdInput, 10);
-    if (!isNaN(targetId) && targetId !== currentUserId) {
-      console.log(`Attempting to start call with user ID: ${targetId}`);
-      setIsSearching(true);
-      setIsSearchingRandom(false);
-      startCall(targetId);
-    } else if (targetUserIdInput === '') {
-      handleInitiatePartnerSearch();
-    } else {
-      alert('Please enter a valid target User ID (cannot be your own ID) or leave empty to find a random partner.');
-    }
   };
 
   const handleStopCall = () => {
@@ -277,42 +167,6 @@ const VideoChat = ({ room }: VideoChatProps) => {
     }
   };
 
-  useEffect(() => {
-    // Остановить polling при размонтировании
-    return () => stopPolling();
-  }, []);
-
-  // --- Синхронизация поиска между вкладками/браузерами ---
-  useEffect(() => {
-    if (!isAuthenticated || !currentUserId) return;
-    let syncInterval: NodeJS.Timeout | null = null;
-    let lastIsSearching = isSearching;
-    let lastRoom = effectiveRoom;
-    const sync = async () => {
-      try {
-        const res = await apiService.default.get('/chat/search-status');
-        const serverSearching = !!res.data.is_searching_for_partner;
-        const serverRoom = res.data.searching_room;
-        // Если статус на сервере отличается от локального — синхронизируем
-        if (serverSearching !== lastIsSearching || serverRoom !== lastRoom) {
-          setIsSearching(serverSearching);
-          if (!serverSearching) {
-            setIsSearchingRandom(false);
-            setSearchCancelled(false);
-          }
-        }
-        lastIsSearching = serverSearching;
-        lastRoom = serverRoom;
-      } catch (e) {
-        // ignore
-      }
-    };
-    syncInterval = setInterval(sync, 2000);
-    return () => {
-      if (syncInterval) clearInterval(syncInterval);
-    };
-  }, [isAuthenticated, currentUserId, effectiveRoom]);
-
   if (isAuthLoading) {
     return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Loading user...</p></div>;
   }
@@ -331,13 +185,13 @@ const VideoChat = ({ room }: VideoChatProps) => {
           <div className="flex gap-2 justify-center">
             <Button
               className={preferGender === 'female' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
-              onClick={() => { setPreferGender('female'); setShowGenderSwitch(false); handleInitiatePartnerSearch(); }}
+              onClick={() => { setPreferGender('female'); setShowGenderSwitch(false); handleStartSearchOrCallNext(); }}
             >
               Только девушек
             </Button>
             <Button
               className={preferGender === 'any' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
-              onClick={() => { setPreferGender('any'); setShowGenderSwitch(false); handleInitiatePartnerSearch(); }}
+              onClick={() => { setPreferGender('any'); setShowGenderSwitch(false); handleStartSearchOrCallNext(); }}
             >
               Всех
             </Button>
@@ -417,7 +271,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
                     <div className="flex flex-col items-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rulet-purple mb-4"></div>
                       <p className="text-lg text-white">
-                        {isSearchingRandom ? "Searching for a partner..." : `Connecting to user ${targetUserIdInput}...`}
+                        {isSearchingRandom ? "Поиск собеседника..." : `Connecting to user ${targetUserIdInput}...`}
                       </p>
                     </div>
                   )}
@@ -433,7 +287,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
                   {!isSearching && !isCallActive && !incomingCall && (
                      <p className="text-lg text-white mb-4">
                         {localStream ? 
-                          (isSearchingRandom ? "Searching... Click \"Stop Search\" to cancel." : 
+                          (isSearchingRandom ? "Поиск собеседника... Нажмите 'Остановить поиск' для отмены." : 
                             (targetUserIdInput ? `Calling User ID: ${targetUserIdInput}...` : 
                               "Click \"Next\" to find a chat partner or enter User ID above."
                             )
@@ -484,7 +338,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
             </Button>
         ) : isSearching ? (
              <Button
-                onClick={handleStopPartnerSearch}
+                onClick={handleStopCall}
                 disabled={!isSearchingRandom}
                 className="bg-yellow-500 hover:bg-yellow-600 rounded-full w-16 h-16 flex items-center justify-center"
             >

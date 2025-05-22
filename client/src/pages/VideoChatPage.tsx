@@ -3,11 +3,8 @@ import VideoChat from '@/components/VideoChat';
 import NavBar from '@/components/NavBar';
 import GenderVerification from '@/components/GenderVerification';
 import { useToast } from "@/components/ui/use-toast";
-import { useLocation } from 'react-router-dom';
 
 const VideoChatPage = () => {
-  const location = useLocation();
-  const roomName = location.state?.roomName;
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -68,24 +65,11 @@ const VideoChatPage = () => {
     setIsConnected(false);
     setRemoteStream(null);
 
-    // Simulate finding a match after a random delay
-    const searchTime = 1000 + Math.random() * 4000;
-    setTimeout(() => {
-      // This is where you would implement the actual WebRTC connection
-      // For demo purposes, we'll just set a fake remote stream
-      
-      // Create a fake remote stream from local stream or a placeholder
-      if (localStream) {
-        setRemoteStream(localStream);
-        setIsConnected(true);
-        setIsSearching(false);
-        
-        toast({
-          title: "Connected!",
-          description: "You are now chatting with someone.",
-        });
-      }
-    }, searchTime);
+    // Display "поиск собеседника"
+    toast({
+      title: "Поиск собеседника...",
+      description: "Идет поиск нового собеседника.",
+    });
   };
 
   const handleStop = () => {
@@ -134,12 +118,7 @@ const VideoChatPage = () => {
 
   return (
     <div className="h-screen overflow-hidden">
-      {roomName && (
-        <div className="w-full bg-black/70 border-b border-rulet-purple/30 py-3 px-6 text-center">
-          <span className="text-lg font-semibold text-rulet-purple">{roomName}</span>
-        </div>
-      )}
-      <VideoChat room={roomName} />
+      <VideoChat />
      
       <NavBar />
     </div>

@@ -34,9 +34,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/video/end-call/{userId}', [VideoSignalingController::class, 'endCall']);
 
     // Chat routes
-    Route::post('/chat/find-partner', [ChatController::class, 'findPartner']);
-    Route::post('/chat/stop-search', [ChatController::class, 'stopSearch']);
-    Route::get('/chat/search-status', [ChatController::class, 'searchStatus']);
+    // The following routes related to chat partner searching have been removed:
+    // Route::post('/chat/find-partner', [ChatController::class, 'findPartner']);
+    // Route::post('/chat/stop-search', [ChatController::class, 'stopSearch']);
+    // Route::get('/chat/search-status', [ChatController::class, 'searchStatus']);
 
     Route::put('/user', [AuthController::class, 'update']);
 
