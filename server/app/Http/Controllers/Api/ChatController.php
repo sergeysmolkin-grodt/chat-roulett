@@ -17,6 +17,12 @@ class ChatController extends Controller
         $room = $request->input('room');
         $gender = $request->input('gender'); // пол текущего пользователя
         $preferGender = $request->input('preferGender', 'female'); // кого искать: female, male, any
+        \Log::info('[findPartner] called', [
+            'user_id' => $currentUser->id,
+            'gender' => $gender,
+            'preferGender' => $preferGender,
+            'room' => $room,
+        ]);
         if (!$room) {
             \Log::info('[findPartner] Room is required', ['user_id' => $currentUser->id]);
             return response()->json(['message' => 'Room is required.'], 422);
@@ -70,7 +76,7 @@ class ChatController extends Controller
         }
 
         if ($partner) {
-            \Log::info('[findPartner] Partner found, resetting flags', [
+            \Log::info('[findPartner] Partner found', [
                 'user_id' => $currentUser->id,
                 'partner_id' => $partner->id,
             ]);
@@ -117,5 +123,15 @@ class ChatController extends Controller
         $currentUser->save();
 
         return response()->json(['message' => 'Search stopped.']);
+    }
+
+    public function searchStatus(Request $request)
+    {
+        $user = Auth::user();
+        return response()->json([
+            'is_searching_for_partner' => $user->is_searching_for_partner,
+            'searching_room' => $user->searching_room,
+            'searching_started_at' => $user->searching_started_at,
+        ]);
     }
 }

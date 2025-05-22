@@ -190,6 +190,9 @@ export const useWebRTC = (currentUserId: number | null) => {
         peerConnection: pc,
         signalingState: pc.signalingState,
       });
+      if (event.streams && event.streams[0]) {
+        console.log('[WebRTC] setRemoteStream: assigning remoteStream', event.streams[0]);
+      }
       setWebRTCState(prev => ({ ...prev, remoteStream: event.streams[0] }));
     };
     
@@ -208,9 +211,6 @@ export const useWebRTC = (currentUserId: number | null) => {
       };
       peerConnection.current.onconnectionstatechange = () => {
         console.log('[WebRTC] Connection state:', peerConnection.current?.connectionState);
-      };
-      peerConnection.current.onerror = (e) => {
-        console.error('[WebRTC] PeerConnection error', e);
       };
     }
 
@@ -332,13 +332,17 @@ export const useWebRTC = (currentUserId: number | null) => {
 
     console.log('Starting call to user', targetUserId);
     const pc = createPeerConnection(targetUserId);
-    
-    currentLocalStream?.getTracks().forEach(track => {
+    if (currentLocalStream) {
+      currentLocalStream.getTracks().forEach(track => {
         const sender = pc.getSenders().find(s => s.track === track);
         if (!sender) {
-            pc.addTrack(track, currentLocalStream!);
+          pc.addTrack(track, currentLocalStream!);
+          console.log('[WebRTC] addTrack: добавлен трек', track, 'в PeerConnection', pc);
+        } else {
+          console.log('[WebRTC] addTrack: трек уже добавлен', track, sender);
         }
-    });
+      });
+    }
 
     try {
       const offer = await pc.createOffer();
@@ -355,10 +359,18 @@ export const useWebRTC = (currentUserId: number | null) => {
     if (!webRTCState.incomingCall || !currentUserId) return;
     let currentLocalStream = webRTCState.localStream;
     if (!currentLocalStream) {
-        console.error("Local stream not available to accept call.");
-        currentLocalStream = await initializeLocalStream();
-        if (!currentLocalStream) return;
-        await new Promise(resolve => setTimeout(resolve, 100));
+        console.warn('[WebRTC] acceptIncomingCall: localStream not ready, waiting...');
+        // Ждём появления localStream максимум 3 секунды
+        let waited = 0;
+        while (!currentLocalStream && waited < 3000) {
+          await new Promise(res => setTimeout(res, 100));
+          waited += 100;
+          currentLocalStream = webRTCState.localStream;
+        }
+        if (!currentLocalStream) {
+          console.error('[WebRTC] acceptIncomingCall: localStream still not ready after waiting.');
+          return;
+        }
     }
     if (peerConnection.current && peerConnection.current.signalingState !== 'closed') {
         console.warn('Call already in progress or peer connection exists.');
@@ -368,13 +380,17 @@ export const useWebRTC = (currentUserId: number | null) => {
     const { fromUserId, offer } = webRTCState.incomingCall;
     console.log('Accepting call from user', fromUserId);
     const pc = createPeerConnection(fromUserId);
-
-    currentLocalStream?.getTracks().forEach(track => {
+    if (currentLocalStream) {
+      currentLocalStream.getTracks().forEach(track => {
         const sender = pc.getSenders().find(s => s.track === track);
         if (!sender) {
-            pc.addTrack(track, currentLocalStream!);
+          pc.addTrack(track, currentLocalStream!);
+          console.log('[WebRTC] addTrack: добавлен трек', track, 'в PeerConnection', pc);
+        } else {
+          console.log('[WebRTC] addTrack: трек уже добавлен', track, sender);
         }
-    });
+      });
+    }
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(offer));

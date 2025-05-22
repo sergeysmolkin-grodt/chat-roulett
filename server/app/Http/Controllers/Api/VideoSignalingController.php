@@ -20,7 +20,7 @@ class VideoSignalingController extends Controller
             'offer' => 'required',
         ]);
 
-        Log::info('Sending offer', [
+        \Log::info('[VideoSignaling] sendOffer', [
             'from' => Auth::id(),
             'to' => $targetUserId,
             'offer' => $validated['offer'],
@@ -40,7 +40,7 @@ class VideoSignalingController extends Controller
 
         $callerId = Auth::id();
 
-        Log::info('Sending answer', [
+        \Log::info('[VideoSignaling] sendAnswer', [
             'from' => $callerId,
             'to' => $targetUserId,
             'answer' => $validated['answer'],
@@ -82,7 +82,7 @@ class VideoSignalingController extends Controller
             'candidate' => 'required',
         ]);
 
-        Log::info('Sending ICE candidate', [
+        \Log::info('[VideoSignaling] sendIceCandidate', [
             'from' => Auth::id(),
             'to' => $targetUserId,
             'candidate' => $validated['candidate'],
@@ -96,7 +96,7 @@ class VideoSignalingController extends Controller
 
     public function endCall(Request $request, $targetUserId)
     {
-        Log::info('Ending call', [
+        \Log::info('[VideoSignaling] endCall', [
             'from' => Auth::id(),
             'to' => $targetUserId,
         ]);

@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chat routes
     Route::post('/chat/find-partner', [ChatController::class, 'findPartner']);
     Route::post('/chat/stop-search', [ChatController::class, 'stopSearch']);
+    Route::get('/chat/search-status', [ChatController::class, 'searchStatus']);
 
     Route::put('/user', [AuthController::class, 'update']);
 

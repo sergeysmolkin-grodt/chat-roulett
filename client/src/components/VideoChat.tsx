@@ -39,6 +39,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   const [isSearchingRandom, setIsSearchingRandom] = useState(false);
   const [preferGender, setPreferGender] = useState<'female' | 'any'>('female');
   const [showGenderSwitch, setShowGenderSwitch] = useState(false);
+  const [searchCancelled, setSearchCancelled] = useState(false);
 
   const effectiveRoom = room || 'global';
 
@@ -55,14 +56,14 @@ const VideoChat = ({ room }: VideoChatProps) => {
   };
 
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
+    if (localStream && localVideoRef.current) {
       console.log('[VideoChat] Назначаю localStream на localVideoRef', localStream.id, localVideoRef.current);
       localVideoRef.current.srcObject = localStream;
     }
   }, [localStream]);
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
+    if (remoteStream && remoteVideoRef.current) {
       console.log('[VideoChat] Назначаю remoteStream на remoteVideoRef', remoteStream.id, remoteVideoRef.current);
       remoteVideoRef.current.srcObject = remoteStream;
     } else if (!remoteStream && remoteVideoRef.current) {
@@ -72,15 +73,10 @@ const VideoChat = ({ room }: VideoChatProps) => {
 
   useEffect(() => {
     console.log('[VideoChat] user:', user, 'isAuthenticated:', isAuthenticated, 'currentUserId:', currentUserId);
-  }, [user, isAuthenticated, currentUserId]);
-
-  useEffect(() => {
-    console.log('[VideoChat] localStream:', localStream);
-  }, [localStream]);
-
-  useEffect(() => {
-    console.log('[VideoChat] remoteStream:', remoteStream);
-  }, [remoteStream]);
+    if (localStream) {
+      console.log('[VideoChat] localStream:', localStream);
+    }
+  }, [user, isAuthenticated, currentUserId, localStream]);
 
   useEffect(() => {
     console.log('[VideoChat] isCallActive:', isCallActive);
@@ -150,9 +146,11 @@ const VideoChat = ({ room }: VideoChatProps) => {
     setIsSearching(true);
     setIsSearchingRandom(true);
     setShowGenderSwitch(false);
+    setSearchCancelled(false);
     stopPolling();
 
     const poll = async () => {
+      if (searchCancelled) return;
       try {
         const response = await apiService.findPartner({
           room: effectiveRoom,
@@ -164,15 +162,16 @@ const VideoChat = ({ room }: VideoChatProps) => {
           startCall(response.data.partner_id);
           setIsSearching(false);
           setIsSearchingRandom(false);
+          setSearchCancelled(false);
           stopPolling();
         } else if (response.data && response.data.message === 'no_female_found' && userGender === 'male' && preferGender === 'female') {
           setShowGenderSwitch(true);
           setIsSearching(false);
           setIsSearchingRandom(false);
+          setSearchCancelled(false);
           toast({ description: 'Нет девушек в поиске. Хотите искать всех?' });
           stopPolling();
-        } else if (isSearching) {
-          // Продолжаем polling, если поиск не отменён
+        } else if (!searchCancelled) {
           pollingRef.current = setTimeout(poll, 1500);
         }
       } catch (error: any) {
@@ -183,6 +182,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
         });
         setIsSearching(false);
         setIsSearchingRandom(false);
+        setSearchCancelled(false);
         stopPolling();
       }
     };
@@ -192,6 +192,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
   const handleStopPartnerSearch = async () => {
     setIsSearching(false);
     setIsSearchingRandom(false);
+    setSearchCancelled(true);
     stopPolling();
     try {
       await apiService.stopSearch();
@@ -281,8 +282,36 @@ const VideoChat = ({ room }: VideoChatProps) => {
     return () => stopPolling();
   }, []);
 
-  // --- Логгер ---
-  // --- конец логгера ---
+  // --- Синхронизация поиска между вкладками/браузерами ---
+  useEffect(() => {
+    if (!isAuthenticated || !currentUserId) return;
+    let syncInterval: NodeJS.Timeout | null = null;
+    let lastIsSearching = isSearching;
+    let lastRoom = effectiveRoom;
+    const sync = async () => {
+      try {
+        const res = await apiService.default.get('/chat/search-status');
+        const serverSearching = !!res.data.is_searching_for_partner;
+        const serverRoom = res.data.searching_room;
+        // Если статус на сервере отличается от локального — синхронизируем
+        if (serverSearching !== lastIsSearching || serverRoom !== lastRoom) {
+          setIsSearching(serverSearching);
+          if (!serverSearching) {
+            setIsSearchingRandom(false);
+            setSearchCancelled(false);
+          }
+        }
+        lastIsSearching = serverSearching;
+        lastRoom = serverRoom;
+      } catch (e) {
+        // ignore
+      }
+    };
+    syncInterval = setInterval(sync, 2000);
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  }, [isAuthenticated, currentUserId, effectiveRoom]);
 
   if (isAuthLoading) {
     return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Loading user...</p></div>;
@@ -464,7 +493,7 @@ const VideoChat = ({ room }: VideoChatProps) => {
         ) : (
             <Button
                 onClick={handleStartSearchOrCallNext}
-                disabled={!localStream || !!incomingCall}
+                disabled={isSearching || isCallActive || !localStream || !!incomingCall}
                 className="bg-rulet-purple hover:bg-rulet-purple-dark rounded-full w-16 h-16 flex items-center justify-center"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
