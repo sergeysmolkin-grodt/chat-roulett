@@ -280,7 +280,7 @@ const FriendsPage = () => {
             {/* Аватар пользователя слева от кнопки */}
             <a
               href="/profile"
-              className="group"
+              className="group flex flex-col items-center justify-center text-center"
               title={currentUser?.username || currentUser?.name || 'Профиль'}
             >
               <div className="w-12 h-12 rounded-full border-2 border-rulet-purple shadow-lg bg-black/60 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
@@ -295,6 +295,9 @@ const FriendsPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
                   </svg>
                 )}
+              </div>
+              <div className="text-xs text-gray-300 text-center mt-1 break-words whitespace-normal max-w-[90px]">
+                @{currentUser?.username || currentUser?.email || currentUser?.name}
               </div>
             </a>
             <Button 
@@ -351,7 +354,7 @@ const FriendsPage = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="relative">
+                      <div className="relative flex flex-col items-center">
                         <Avatar className="h-12 w-12 border border-rulet-purple/30">
                           <AvatarImage src={friend.avatar_url || undefined} />
                           <AvatarFallback>{friend.name?.[0] || ''}</AvatarFallback>
@@ -411,11 +414,15 @@ const FriendsPage = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="relative">
+                      <div className="relative flex flex-col items-center">
                         <Avatar className="h-12 w-12 border border-rulet-purple/30">
                           <AvatarImage src={friend.avatar_url || undefined} />
                           <AvatarFallback>{friend.name?.[0] || ''}</AvatarFallback>
                         </Avatar>
+                        {/* Никнейм под аватаром */}
+                        <div className="text-xs text-gray-400 text-center mt-1 break-words whitespace-normal max-w-[80px]">
+                          @{friend.username || friend.email || friend.name}
+                        </div>
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-black" title="Онлайн"></span>
                       </div>
                       <div>
