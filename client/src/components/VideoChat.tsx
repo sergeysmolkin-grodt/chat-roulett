@@ -1,379 +1,686 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast as useShadCNToast } from "@/components/ui/use-toast";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
-import { useWebRTC } from '@/hooks/useWebRTC';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+import apiService from '@/services/apiService';
+import { toast as sonnerToast } from 'sonner';
 
-interface VideoChatProps { room?: string }
-const VideoChat = ({ room }: VideoChatProps) => {
+// Declare Pusher and Echo on the window object
+interface CustomWindow extends Window {
+    Pusher?: typeof Pusher;
+    Echo?: any; // Using any to suppress persistent linter errors
+}
+declare let window: CustomWindow;
+
+const VideoChat: React.FC = () => {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
-  const currentUserId = user ? user.id : null;
-  const userGender = user?.gender || 'male';
   
-  const {
-    localStream,
-    remoteStream,
-    isCallActive,
-    incomingCall,
-    availableVideoDevices,
-    selectedVideoDeviceId,
-    startCall,
-    acceptIncomingCall,
-    rejectIncomingCall,
-    hangUp,
-    initializeLocalStream,
-  } = useWebRTC(currentUserId);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const currentLocalStreamRef = useRef<MediaStream | null>(null); // Ref to current stream for cleanup
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [availableVideoDevices, setAvailableVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string | undefined>(undefined);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const { toast } = useToast();
+  const { toast: shadCNToast } = useShadCNToast();
+  
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const [targetUserIdInput, setTargetUserIdInput] = useState<string>('');
+  
   const [isSearching, setIsSearching] = useState(false);
-  const [isSearchingRandom, setIsSearchingRandom] = useState(false);
-  const [preferGender, setPreferGender] = useState<'female' | 'any'>('female');
-  const [showGenderSwitch, setShowGenderSwitch] = useState(false);
-  const [searchCancelled, setSearchCancelled] = useState(false);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [partnerId, setPartnerId] = useState<number | null>(null);
+  const [statusMessage, setStatusMessage] = useState('Click "Search Partner" to start.');
+  
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const echoInstanceRef = useRef<any | null>(null); // Using any
+  const echoInitializedRef = useRef(false);
 
-  const effectiveRoom = room || 'global';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-  // Добавим определение премиум-статуса
-  const isPremiumUser = user?.subscription_status === 'active';
-
+  // Effect to keep currentLocalStreamRef in sync with localStream state
   useEffect(() => {
-    if (localStream && localVideoRef.current) {
-      console.log('[VideoChat] Назначаю localStream на localVideoRef', localStream.id, localVideoRef.current);
-      localVideoRef.current.srcObject = localStream;
-    }
+    currentLocalStreamRef.current = localStream;
   }, [localStream]);
 
-  useEffect(() => {
-    if (remoteStream && remoteVideoRef.current) {
-      console.log('[VideoChat] Назначаю remoteStream на remoteVideoRef', remoteStream.id, remoteVideoRef.current);
-      remoteVideoRef.current.srcObject = remoteStream;
-    } else if (!remoteStream && remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null;
+  // Initialize Local Media Stream
+  const initializeLocalStream = useCallback(async (deviceId?: string, isRetryAttempt: boolean = false) => {
+    console.log(`Initializing local stream. Device: ${deviceId || "default"}, Retry: ${isRetryAttempt}, Current stream exists: ${!!currentLocalStreamRef.current}`);
+    
+    if (currentLocalStreamRef.current) {
+        console.log("Stopping existing local stream tracks.");
+        currentLocalStreamRef.current.getTracks().forEach(track => track.stop());
     }
-  }, [remoteStream]);
+    setLocalStream(null);
+    if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+    }
+    setIsCameraOff(false);
+    setIsMuted(false);
 
-  useEffect(() => {
-    console.log('[VideoChat] user:', user, 'isAuthenticated:', isAuthenticated, 'currentUserId:', currentUserId);
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: true,
+        });
+        setLocalStream(stream);
+        if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+        }
+        
+        const videoDevices = await navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'videoinput'));
+        setAvailableVideoDevices(videoDevices);
+        if (videoDevices.length > 0) {
+            const currentTrackDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+            const newlySelectedDeviceId = deviceId || currentTrackDeviceId || videoDevices[0].deviceId;
+            if (newlySelectedDeviceId !== selectedVideoDeviceId) {
+                setSelectedVideoDeviceId(newlySelectedDeviceId);
+            }
+        }
+        const successMessage = `${isRetryAttempt ? 'Virtual' : 'User'} camera and Mic initialized.`;
+        setStatusMessage(successMessage);
+        // sonnerToast.success(successMessage); // Maybe too verbose for every init
+        return { stream, error: null };
+    } catch (error: any) {
+        console.error('Error accessing media devices:', error);
+        const errPrefix = isRetryAttempt ? "Error accessing virtual camera" : "Error accessing media device";
+        const errMessage = `${errPrefix} (selected: ${deviceId || 'default'}): ${error.message}. Check permissions or select another.`;
+        sonnerToast.error(errMessage);
+        setStatusMessage(errMessage);
+        setLocalStream(null); 
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            setAvailableVideoDevices(devices.filter(d => d.kind === 'videoinput'));
+        });
+        return { stream: null, error };
+    }
+  }, [selectedVideoDeviceId, setSelectedVideoDeviceId]); // Added setSelectedVideoDeviceId for consistency, though already there
+
+  const handleHangUp = useCallback((isTerminatingCall = true) => {
+    console.log(`Hanging up. Is terminating call: ${isTerminatingCall}`);
+    if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+    }
+    setRemoteStream(null);
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+
+    const currentRoomId = roomId; // Capture roomId before it's nulled for the leave call
+    if (currentRoomId && echoInstanceRef.current) {
+        console.log("Leaving room channel:", `video-chat-room.${currentRoomId}`);
+        try {
+            (echoInstanceRef.current as any).leave(`video-chat-room.${currentRoomId}`);
+        } catch (e) { console.warn("Error leaving room channel on hangup:", e); }
+    }
+
+    setRoomId(null);
+    setPartnerId(null);
+    // setIsSearching(false); // Controlled by handleSearch or match success/failure
+
+    if (isTerminatingCall) { 
+        setStatusMessage('Call ended. Search again?');
+        sonnerToast.info("Call ended.");
+    } else { // This is a reset before a new search or after a failed connection attempt
+        setStatusMessage('Ready to search or previous connection attempt reset.');
+    }
+  }, [roomId]); // roomId is a dependency to correctly leave the room channel.
+
+  // Setup RTCPeerConnection
+  const setupPeerConnection = useCallback((currentRoomId: string) => {
+    console.log("Setting up PeerConnection for room:", currentRoomId);
+    if (pcRef.current) {
+        pcRef.current.close();
+    }
+    const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+
+    // Add transceivers for audio and video to ensure m-lines are present
+    pc.addTransceiver('video', { direction: 'sendrecv' });
+    pc.addTransceiver('audio', { direction: 'sendrecv' });
+
+    pc.onicecandidate = event => {
+        if (event.candidate && user && currentRoomId && echoInstanceRef.current) {
+            apiService.post('/video-chat/send-signal', {
+                roomId: currentRoomId,
+                signalData: { type: 'candidate', candidate: event.candidate },
+            }).catch(err => console.error("ICE send error:", err));
+        }
+    };
+
+    pc.ontrack = event => {
+        console.log('Remote track received:', event.streams[0]);
+        if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+        }
+        setRemoteStream(event.streams[0]);
+    };
+
+    pc.onconnectionstatechange = () => {
+        if (pcRef.current) {
+            console.log("PC state:", pcRef.current.connectionState);
+            const state = pcRef.current.connectionState;
+            if (state === "disconnected" || state === "failed" || state === "closed") {
+                 setStatusMessage(prev => (prev.includes("Connecting") || prev.includes("Call connected")) ? "Partner disconnected or connection lost." : prev);
+                 handleHangUp(false);
+            }
+        }
+    };
+
     if (localStream) {
-      console.log('[VideoChat] localStream:', localStream);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    } else {
+        console.warn("Local stream not available for PC setup. Will proceed without sending local tracks initially.");
+        // Optionally, try to initialize it one last time if critical, but for now, proceed without
+        // initializeLocalStream(selectedVideoDeviceId).then(stream => {
+        //     if (stream && pc.signalingState !== 'closed') {
+        //          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        //     }
+        // });
     }
-  }, [user, isAuthenticated, currentUserId, localStream]);
+    pcRef.current = pc;
+    return pc;
+  }, [user, handleHangUp]); // Removed localStream, initializeLocalStream, selectedVideoDeviceId from deps
 
+  // Effect to update PC tracks when localStream changes
   useEffect(() => {
-    console.log('[VideoChat] isCallActive:', isCallActive);
-  }, [isCallActive]);
+    const pc = pcRef.current;
+    if (!pc || pc.signalingState === 'closed') {
+      return; // PC not ready or already closed
+    }
 
+    console.log("useEffect [localStream]: Updating tracks. Has localStream:", !!localStream);
+
+    const videoTrack = localStream?.getVideoTracks()[0] || null;
+    const audioTrack = localStream?.getAudioTracks()[0] || null;
+
+    const videoTransceiver = pc.getTransceivers().find(
+      t => (t.sender.track && t.sender.track.kind === 'video') || (t.receiver.track && t.receiver.track.kind === 'video')
+    );
+    const audioTransceiver = pc.getTransceivers().find(
+      t => (t.sender.track && t.sender.track.kind === 'audio') || (t.receiver.track && t.receiver.track.kind === 'audio')
+    );
+
+    if (videoTransceiver && videoTransceiver.sender) {
+      videoTransceiver.sender.replaceTrack(videoTrack)
+        .then(() => console.log(`Video track ${videoTrack ? 'set' : 'cleared'} on transceiver.`))
+        .catch(e => console.error('Error replacing video track:', e));
+    } else {
+        console.warn("Video transceiver sender not found for track replacement.");
+    }
+
+    if (audioTransceiver && audioTransceiver.sender) {
+      audioTransceiver.sender.replaceTrack(audioTrack)
+        .then(() => console.log(`Audio track ${audioTrack ? 'set' : 'cleared'} on transceiver.`))
+        .catch(e => console.error('Error replacing audio track:', e));
+    } else {
+        console.warn("Audio transceiver sender not found for track replacement.");
+    }
+  }, [localStream]); // Depends on localStream. pcRef.current is accessed but not a reactive dependency here.
+
+  // Handle Incoming Signaling Data
+  const handleSignalingData = useCallback(async (data: any) => {
+    if (!roomId || !user) return;
+    let pc = pcRef.current;
+    if (!pc || pc.signalingState === 'closed') {
+        console.log("PC closed or not found, setting up new one for room:", roomId);
+        pc = setupPeerConnection(roomId); // This might return a new pc instance
+    }
+    if (!pc) { // Still no PC after setup attempt
+        console.error("Failed to setup PeerConnection for signaling.");
+        sonnerToast.error("Video connection error: PC setup failed.");
+        return;
+    }
+
+    try {
+        if (data.type === 'offer') {
+            console.log("Received offer. PC state:", pc.signalingState);
+            let stream: MediaStream | null = localStream; // Check current state stream
+            if (!stream) {
+                const initResult = await initializeLocalStream(selectedVideoDeviceId); // Attempt to initialize
+                stream = initResult.stream;
+            }
+            if (!stream) {
+                sonnerToast.info("Your Camera/Mic is not ready. Will receive video/audio but not send.");
+            }
+            
+            // Proceed with offer handling
+            if(pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-remote-offer') { // common states to receive an offer
+                 await pc.setRemoteDescription(new RTCSessionDescription(data));
+                 const answer = await pc.createAnswer();
+                 await pc.setLocalDescription(answer);
+                 apiService.post('/video-chat/send-signal', {
+                     roomId: roomId,
+                     signalData: { type: 'answer', sdp: answer.sdp },
+                 });
+                 setStatusMessage("Call connected!"); 
+                 sonnerToast.success("Call connected!");
+            } else {
+                console.warn("Received offer in unexpected state:", pc.signalingState);
+            }
+
+        } else if (data.type === 'answer') {
+            console.log("Received answer. PC state:", pc.signalingState);
+            if (pc.signalingState === 'have-local-offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+                setStatusMessage("Call connected!");
+                sonnerToast.success("Call connected!");
+            } else {
+                 console.warn("Received answer in unexpected state:", pc.signalingState);
+            }
+        } else if (data.type === 'candidate') {
+            if (data.candidate && pc.signalingState !== 'closed') {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) {
+                    console.error("Error adding ICE candidate:", e);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Signaling error:', error);
+        sonnerToast.error("Video connection error.");
+    }
+  }, [roomId, user, localStream, setupPeerConnection, initializeLocalStream, selectedVideoDeviceId]);
+
+   // Create Offer function
+   const createOffer = useCallback(async (currentRoomId: string) => {
+    if (!user || !currentRoomId) return;
+    console.log("Creating offer for room:", currentRoomId);
+    let pc = pcRef.current;
+    if (!pc || pc.signalingState === 'closed') {
+        pc = setupPeerConnection(currentRoomId);
+    }
+    if (!pc) { // Still no PC after setup attempt
+        console.error("Failed to setup PeerConnection for creating offer.");
+        sonnerToast.error("Video connection error: PC setup failed for offer.");
+        return;
+    }
+
+    // localStream is managed by its own state and useEffect. 
+    // createOffer assumes localStream (and thus tracks on PC via useEffect) is in the desired state.
+    // If localStream is null, offer will be made without local tracks (but with m-lines due to transceivers).
+    if (!localStream) {
+        sonnerToast.info("Your Camera/Mic is not available. Creating offer without sending video/audio.");
+    }
+    
+    try {
+        if (pc.signalingState === 'stable') { // Only create offer if in stable state
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            apiService.post('/video-chat/send-signal', {
+                roomId: currentRoomId,
+                signalData: { type: 'offer', sdp: offer.sdp },
+            });
+            setStatusMessage('Offer sent. Waiting for partner...');
+        } else {
+            console.warn("Skipping offer creation, PC not in stable state:", pc.signalingState);
+        }
+    } catch (error) {
+        console.error('Create offer error:', error);
+        sonnerToast.error("Failed to create video offer.");
+    }
+}, [user, localStream, setupPeerConnection]);
+
+
+  // Initialize Echo
   useEffect(() => {
-    console.log('[VideoChat] incomingCall:', incomingCall);
-  }, [incomingCall]);
+    if (user && !echoInitializedRef.current && API_BASE_URL) {
+        console.log("Attempting to initialize Echo for user:", user.id);
+        window.Pusher = Pusher; 
+        const instance: any = new Echo({ // Using any
+            broadcaster: 'reverb',
+            key: import.meta.env.VITE_REVERB_APP_KEY,
+            wsHost: import.meta.env.VITE_REVERB_HOST,
+            wsPort: import.meta.env.VITE_REVERB_PORT || '8080',
+            wssPort: import.meta.env.VITE_REVERB_PORT_TLS || '8080',
+            forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+            enabledTransports: ['ws', 'wss'],
+            authEndpoint: `${API_BASE_URL}/broadcasting/auth`,
+            auth: {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+                    Accept: 'application/json',
+                },
+            },
+        });
+        echoInstanceRef.current = instance;
+        window.Echo = instance;
+        echoInitializedRef.current = true;
+
+        console.log("Echo instance created and assigned.");
+
+        (instance as any).private(`user.${user.id}`)
+            .listen('.match.found', (event: { roomId: string; userId1: number; userId2: number }) => {
+                console.log('Match found event received:', event);
+                sonnerToast.success('Partner found!');
+                setIsSearching(false);
+                
+                if (pcRef.current && pcRef.current.signalingState !== 'closed') {
+                    pcRef.current.close();
+                }
+                if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+                setRemoteStream(null);
+
+                setRoomId(event.roomId); 
+                const pId = event.userId1 === user.id ? event.userId2 : event.userId1;
+                setPartnerId(pId);
+                setStatusMessage(`User ${pId} found. Connecting...`);
+                
+                let currentPC = pcRef.current; // pcRef.current может быть null или closed от предыдущего вызова
+                // Всегда создаем или пересоздаем PeerConnection при новом матче
+                console.log("Match found: Setting up new PeerConnection for room:", event.roomId);
+                currentPC = setupPeerConnection(event.roomId);
+                
+                if (!currentPC) {
+                     console.error("MATCH_FOUND_ERROR: Failed to setup PeerConnection. Cannot proceed with offer/answer.");
+                     sonnerToast.error("Connection setup error after match found.");
+                     return;
+                }
+
+                // Explicitly apply tracks to the newly created PC if localStream is available
+                // This uses the localStream from the outer scope, which should be up-to-date.
+                if (localStream && currentPC.signalingState !== 'closed') {
+                    console.log("Match found: Explicitly applying tracks to new PC from current localStream");
+                    const videoTrack = localStream.getVideoTracks()[0] || null;
+                    const audioTrack = localStream.getAudioTracks()[0] || null;
+                    currentPC.getTransceivers().forEach(transceiver => {
+                        const sender = transceiver.sender;
+                        if (!sender) return;
+                        if (transceiver.receiver.track?.kind === 'video' || sender.track?.kind === 'video') {
+                            sender.replaceTrack(videoTrack).catch(e => console.error("Error replacing video track on match:", e));
+                        } else if (transceiver.receiver.track?.kind === 'audio' || sender.track?.kind === 'audio') {
+                            sender.replaceTrack(audioTrack).catch(e => console.error("Error replacing audio track on match:", e));
+                        }
+                    });
+                }
+
+                if (user.id < pId) {
+                    createOffer(event.roomId); 
+                } else {
+                    console.log("Match found: This client will await offer. PC state:", currentPC.signalingState);
+                }
+            });
+    }
+
+    return () => {
+        if (echoInstanceRef.current && echoInitializedRef.current) { 
+            console.log("VideoChat component unmounting: Disconnecting Echo and leaving user channel.");
+            try {
+                 (echoInstanceRef.current as any).leaveChannel(`user.${user?.id}`); 
+            } catch (e) { console.warn("Error leaving user channel on unmount:", e);}
+            echoInstanceRef.current.disconnect();
+            echoInstanceRef.current = null; 
+            echoInitializedRef.current = false; 
+            // if (window.Echo === echoInstanceRef.current) window.Echo = undefined; // This check is tricky due to ref being nulled
+        }
+    };
+  }, [user, API_BASE_URL, localStream, createOffer, setupPeerConnection]); // Added localStream, createOffer, setupPeerConnection to deps because they are used in the .listen callback
+  // Note: Dependencies like localStream, createOffer, setupPeerConnection in the Echo init useEffect 
+  // might still cause re-runs if their references change. They need to be stable.
+
+  // Listen on Room Channel when roomId is set
+  useEffect(() => {
+    let roomChannelName = '';
+    if (roomId && echoInstanceRef.current && user) {
+        roomChannelName = `video-chat-room.${roomId}`;
+        console.log("Subscribing and listening on room channel:", roomChannelName);
+        
+        const channel = (echoInstanceRef.current as any).private(roomChannelName);
+        channel.listen('.signaling.event', (event: { userId: number; signalData: any }) => {
+            if (event.userId === user.id) return;
+            handleSignalingData(event.signalData);
+        });
+        
+        return () => {
+            if (echoInstanceRef.current && roomChannelName) {
+                console.log("Leaving room channel:", roomChannelName);
+                try{
+                    (echoInstanceRef.current as any).leave(roomChannelName); 
+                } catch (e) { console.warn("Error leaving room channel:", e);}
+            }
+        };
+    }
+  }, [roomId, user, handleSignalingData]); // handleSignalingData is memoized
+  
+  // Auto-initialize local stream on mount
+  useEffect(() => {
+    if (isAuthenticated && !isAuthLoading && !localStream && !pcRef.current) {
+        initializeLocalStream(selectedVideoDeviceId).then(result => {
+            if (!result.stream && result.error && (result.error.name === 'NotReadableError' || result.error.message?.toLowerCase().includes('device in use') || result.error.message?.toLowerCase().includes('устройство используется'))) {
+                 sonnerToast.info("Default camera seems to be in use. You can select another from the list or click search to find a partner (it may try a virtual camera).");
+                 // Ensure device list is populated for user selection
+                 if (availableVideoDevices.length === 0) {
+                    navigator.mediaDevices.enumerateDevices().then(devices => {
+                        setAvailableVideoDevices(devices.filter(d => d.kind === 'videoinput'));
+                    });
+                 }
+            }
+        });
+    }
+    // Cleanup on unmount - localStream tracks are stopped by initializeLocalStream if a new one starts, 
+    // or by this cleanup if component unmounts with an active stream.
+    return () => {
+        if (currentLocalStreamRef.current) { // Use ref for cleanup
+            console.log("VideoChat unmounting: Stopping local stream tracks.");
+            currentLocalStreamRef.current.getTracks().forEach(track => track.stop());
+            setLocalStream(null); // Clear state as well
+        }
+        if (pcRef.current) {
+            console.log("VideoChat unmounting: Closing PeerConnection.");
+            pcRef.current.close();
+            pcRef.current = null;
+        }
+        if(echoInstanceRef.current) { // Ensure Echo is disconnected on final unmount
+            console.log("VideoChat unmounting: Disconnecting Echo.");
+            echoInstanceRef.current.disconnect();
+            echoInstanceRef.current = null; // Ensure ref is cleared
+             if (window.Echo === echoInstanceRef.current) window.Echo = undefined;
+        }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isAuthLoading, selectedVideoDeviceId]); // initializeLocalStream is useCallback memoized, selectedVideoDeviceId for initial call
+
+  // Action Handlers
+  const handleSearch = async () => {
+    if (!user) {
+        sonnerToast.error('Login required to search.'); return;
+    }
+    
+    let currentStream: MediaStream | null = localStream;
+
+    if (!currentStream) {
+      sonnerToast.info("Attempting to initialize camera...");
+      const initResultObject = await initializeLocalStream(selectedVideoDeviceId);
+      currentStream = initResultObject.stream;
+
+      if (!currentStream && initResultObject.error && (initResultObject.error.name === 'NotReadableError' || initResultObject.error.message?.toLowerCase().includes('device in use') || initResultObject.error.message?.toLowerCase().includes('устройство используется'))) {
+        sonnerToast.info("Primary camera in use or inaccessible. Looking for a virtual camera (e.g., OBS)...", { duration: 4000 });
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const virtualCameraKeywords = ['obs', 'virtual', 'droidcam', 'ivcam', 'epoccam', 'camtwist', 'manycam', 'logi capture', 'vcam', 'snap camera', 'mmhmm'];
+        
+        let foundVirtualCamera: MediaDeviceInfo | null = null;
+        for (const device of videoDevices) {
+          const deviceLabelLower = device.label.toLowerCase();
+          if (virtualCameraKeywords.some(keyword => deviceLabelLower.includes(keyword))) {
+            if (device.deviceId !== selectedVideoDeviceId || !selectedVideoDeviceId) { 
+              foundVirtualCamera = device;
+              break;
+            }
+          }
+        }
+
+        if (foundVirtualCamera) {
+          sonnerToast.info(`Found virtual camera: ${foundVirtualCamera.label}. Attempting to use it.`, { duration: 4000 });
+          setSelectedVideoDeviceId(foundVirtualCamera.deviceId); 
+          const secondInitResultObject = await initializeLocalStream(foundVirtualCamera.deviceId, true);
+          currentStream = secondInitResultObject.stream;
+          if (currentStream) {
+            sonnerToast.success("Virtual camera initialized successfully!");
+          } else {
+            sonnerToast.error(`Failed to initialize virtual camera (${foundVirtualCamera.label}). It might not be running or configured correctly.`);
+          }
+        } else if (selectedVideoDeviceId && virtualCameraKeywords.some(k => availableVideoDevices.find(d=>d.deviceId === selectedVideoDeviceId)?.label.toLowerCase().includes(k)) ){
+            sonnerToast.info("The selected camera appears to be a virtual camera but could not be started. Please ensure it's running and not in use by another app.");
+        } else {
+          sonnerToast.info("No alternative virtual camera found. Proceeding without local video if primary/selected camera failed.", { duration: 5000 });
+        }
+      }
+
+      if (!currentStream) {
+        setStatusMessage('No camera/mic. Search continues without sending your video/audio.');
+        sonnerToast.info("Continuing search without sending local video/audio.", { duration: 4000 });
+      } else {
+        // sonnerToast.success("Camera/Mic ready for search."); 
+      }
+    }
+
+    handleHangUp(false); 
+    setIsSearching(true);
+    setStatusMessage('Searching for a partner...');
+    try {
+        const response = await apiService.post('/video-chat/start-searching');
+        // Message from backend can be for info, actual matching happens via Echo
+        if (response.data.message) {
+            console.log("Search API response:", response.data.message);
+            if (!response.data.roomId) { // If not immediately matched
+                 sonnerToast.info(response.data.message); // e.g., "Searching for a partner..."
+            }
+        }
+    } catch (error: any) {
+        setIsSearching(false);
+        setStatusMessage('Search error. Please try again.');
+        sonnerToast.error(error.response?.data?.message || 'Failed to start search.');
+    }
+  };
 
   const toggleMute = () => {
     if (localStream) {
-      localStream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
-      setIsMuted(prev => !prev);
-      toast({
-        description: !isMuted ? "Microphone turned off" : "Microphone turned on",
-      });
+      const currentlyMuted = localStream.getAudioTracks().some(t => !t.enabled);
+      localStream.getAudioTracks().forEach(t => t.enabled = currentlyMuted); // Toggle based on current state
+      setIsMuted(!currentlyMuted);
+      sonnerToast.info(!currentlyMuted ? "Mic Muted" : "Mic Unmuted");
+    } else {
+        sonnerToast.info("Cannot toggle mute: No active microphone stream.");
     }
   };
 
   const toggleCamera = () => {
     if (localStream) {
-      localStream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
-      setIsCameraOff(prev => !prev);
-      toast({
-        description: !isCameraOff ? "Camera turned off" : "Camera turned on",
-      });
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        toast({
-          variant: "destructive",
-          description: `Error attempting to enable fullscreen: ${err.message}`,
-        });
-      });
+      const currentlyOff = localStream.getVideoTracks().some(t => !t.enabled);
+      localStream.getVideoTracks().forEach(t => t.enabled = currentlyOff); // Toggle based on current state
+      setIsCameraOff(!currentlyOff);
+      sonnerToast.info(!currentlyOff ? "Cam Off" : "Cam On");
+      // Visibility of local video is handled by CSS/style based on isCameraOff and localStream presence
     } else {
-      document.exitFullscreen();
+        sonnerToast.info("Cannot toggle camera: No active camera stream.");
     }
-    setIsFullscreen(!isFullscreen);
   };
-
-  const handleStartSearchOrCallNext = () => {
-    if (!localStream) {
-      alert("Please enable your camera and microphone first.");
-      initializeLocalStream();
-      return;
-    }
-    setIsSearching(true);
-    setIsSearchingRandom(true);
-  };
-
-  const handleStopCall = () => {
-    console.log('[VideoChat] handleStopCall called.');
-    hangUp();
-    setIsSearching(false);
-    setIsSearchingRandom(false);
-  };
-
-  const handleAcceptCall = () => {
-    console.log('[VideoChat] handleAcceptCall called. localStream:', localStream);
-    if (!localStream) {
-        alert("Please enable your camera and microphone to accept the call.");
-        initializeLocalStream();
-        return;
-    }
-    acceptIncomingCall();
-    setIsSearching(false);
-    setIsSearchingRandom(false);
-  };
-
-  const handleRejectCall = () => {
-    rejectIncomingCall();
-  };
-  
-  useEffect(() => {
-    if (isCallActive || incomingCall === null) {
-        setIsSearching(false);
-        setIsSearchingRandom(false);
-    }
-  }, [isCallActive, incomingCall]);
-
-  useEffect(() => {
-    // Автоматически принимаем входящий звонок, если есть offer и звонок не активен
-    if (incomingCall && !isCallActive) {
-      console.log('[VideoChat] Auto-accepting incoming call from', incomingCall.fromUserId);
-      acceptIncomingCall();
-      setIsSearching(false);
-      setIsSearchingRandom(false);
-    }
-  }, [incomingCall, isCallActive, acceptIncomingCall]);
 
   const handleCameraSelect = (deviceId: string) => {
     if (deviceId && deviceId !== selectedVideoDeviceId) {
-      console.log('Camera selected:', deviceId);
-      initializeLocalStream(deviceId);
+        setSelectedVideoDeviceId(deviceId); // Update state immediately
+        initializeLocalStream(deviceId); // Re-initialize with new device
     }
   };
 
-  if (isAuthLoading) {
-    return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Loading user...</p></div>;
+  // UI Rendering
+  if (isAuthLoading && !user) { // Show loading if user data is being fetched and not yet available
+    return <div className="flex items-center justify-center h-screen"><p>Loading user data...</p></div>;
   }
-
-  if (!isAuthenticated || !currentUserId) {
-    return <div className="w-full h-screen flex items-center justify-center bg-rulet-dark text-white"><p>Please log in to use the chat.</p></div>;
+  if (!isAuthenticated && !isAuthLoading) { // If loading is finished and still not authenticated
+    return <div className="flex items-center justify-center h-screen"><p>Please <a href="/login" className="underline">log in</a> to use the chat.</p></div>;
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-rulet-dark">
-      {/* Кнопка скачивания логов */}
-     
-      {showGenderSwitch && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-black/80 p-4 rounded-xl border border-rulet-purple text-center shadow-lg">
-          <div className="mb-2 text-white">Нет девушек в поиске. Кого искать?</div>
-          <div className="flex gap-2 justify-center">
-            <Button
-              className={preferGender === 'female' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
-              onClick={() => { setPreferGender('female'); setShowGenderSwitch(false); handleStartSearchOrCallNext(); }}
-            >
-              Только девушек
-            </Button>
-            <Button
-              className={preferGender === 'any' ? 'bg-rulet-purple text-white' : 'bg-gray-700 text-white'}
-              onClick={() => { setPreferGender('any'); setShowGenderSwitch(false); handleStartSearchOrCallNext(); }}
-            >
-              Всех
-            </Button>
-          </div>
+    <div className="flex flex-col items-center p-4 bg-rulet-bg text-white min-h-screen">
+        <div className="w-full max-w-6xl">
+            <div className="mb-4 text-center">
+                <p className="text-lg">{statusMessage}</p>
+                {user && <p className="text-sm">Logged in as: {user.name} {isMuted ? "[Muted]" : ""} {isCameraOff ? "[Cam Off]" : ""}</p>}
+            </div>
+
+            <ResizablePanelGroup direction="horizontal" className="w-full aspect-[16/6] md:aspect-[16/5] rounded-lg border bg-black/30">
+                <ResizablePanel defaultSize={50}>
+                    <div className="flex h-full items-center justify-center p-1 relative video-container">
+                        <video 
+                            ref={localVideoRef} 
+                            autoPlay 
+                            playsInline 
+                            muted /* Local video should always be muted by browser for user */
+                            className="w-full h-full object-contain rounded-md video-element" 
+                            style={{ transform: 'scaleX(-1)', display: localStream && !isCameraOff ? 'block' : 'none' }}
+                        />
+                        {(!localStream || isCameraOff) && (
+                            <div className="abs-center text-gray-400">
+                                {isCameraOff && localStream ? "Your Camera is Off" : "Enable Camera & Mic or Select Source"}
+                            </div>
+                        )}
+                        <div className="video-label bottom-2 left-2">{user?.name || 'You'} {localStream && isMuted ? "(Mic Muted)" : ""}</div>
+                    </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={50}>
+                    <div className="flex h-full items-center justify-center p-1 relative video-container">
+                        {remoteStream && remoteVideoRef.current?.srcObject ? (
+                            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain rounded-md video-element"/>
+                        ) : (
+                            <div className="abs-center text-gray-400">{roomId && partnerId ? "Connecting to partner..." : "Waiting for partner video"}</div>
+                        )}
+                        {partnerId && remoteStream && <div className="video-label bottom-2 right-2">Partner (User {partnerId})</div>}
+                    </div>
+                </ResizablePanel>
+            </ResizablePanelGroup>
+
+            <div className="mt-4 flex flex-wrap justify-center items-center gap-3">
+                <Button 
+                    onClick={roomId ? () => handleHangUp(true) : handleSearch} 
+                    disabled={isSearching} // Only disable if actively searching, or if in call (handled by roomId presence for text)
+                    className={`px-8 py-3 text-lg font-semibold rounded-md transition-all duration-150 ease-in-out
+                                ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+                                disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                    {roomId ? 'Hang Up' : isSearching ? 'Searching...' : 'Search Partner'}
+                </Button>
+                <Button onClick={toggleMute} variant="outline" className="px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70" disabled={!localStream}>{isMuted ? 'Unmute Mic' : 'Mute Mic'}</Button>
+                <Button onClick={toggleCamera} variant="outline" className="px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70" disabled={!localStream}>{isCameraOff ? 'Camera On' : 'Camera Off'}</Button>
+
+                {availableVideoDevices.length > 0 && ( // Show selector if devices are enumerated, even if no stream yet
+                    <Select 
+                        onValueChange={handleCameraSelect} 
+                        value={selectedVideoDeviceId} 
+                        disabled={!!roomId || isSearching} 
+                    >
+                        <SelectTrigger className="w-[240px] px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70">
+                            <SelectValue placeholder="Select camera" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                            {availableVideoDevices.map((device, index) => (
+                                <SelectItem 
+                                    key={device.deviceId}
+                                    value={device.deviceId}
+                                    className="hover:bg-gray-700 focus:bg-gray-600 cursor-pointer"
+                                >
+                                    {device.label || `Camera ${index + 1}`}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+            </div>
+            <style>{`
+                .abs-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+                .video-label { position: absolute; background-color: rgba(0,0,0,0.6); padding: 3px 10px; border-radius: 5px; font-size: 0.8rem; color: white; pointer-events: none; }
+                .video-container { background-color: #1a1a1a; border-radius: 0.375rem; overflow: hidden; position: relative; }
+                .video-element { background-color: #000;}
+            `}</style>
         </div>
-      )}
-      <div className="absolute top-4 left-4 z-10 bg-gray-700 p-2 rounded shadow flex space-x-2 items-center">
-        <input 
-            type="number" 
-            placeholder="Target User ID" 
-            value={targetUserIdInput} 
-            onChange={(e) => setTargetUserIdInput(e.target.value)} 
-            className="p-1 rounded bg-gray-800 text-white border border-gray-600"
-            disabled={isCallActive || !!incomingCall || isSearching}
-        />
-        {availableVideoDevices && availableVideoDevices.length > 1 && (
-            <Select 
-                onValueChange={handleCameraSelect} 
-                defaultValue={selectedVideoDeviceId || undefined}
-                disabled={!localStream}
-            >
-                <SelectTrigger className="w-[200px] bg-gray-800 text-white border-gray-600">
-                    <SelectValue placeholder="Select camera" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-800 text-white">
-                    {availableVideoDevices.map(device => (
-                        <SelectItem key={device.deviceId} value={device.deviceId} className="hover:bg-gray-700">
-                            {device.label || `Camera ${device.deviceId.substring(0, 6)}`}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        )}
-      </div>
-
-      <ResizablePanelGroup direction="horizontal" className="h-[calc(100%-80px)]">
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="relative w-full h-full">
-            <video 
-              ref={localVideoRef} 
-              autoPlay 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover bg-rulet-dark"
-            />
-            {isCameraOff && (
-              <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
-                <p className="text-white text-lg">Camera Off</p>
-              </div>
-            )}
-            {!localStream && !isAuthLoading && (
-                 <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
-                    <p className="text-white text-lg mb-2">Camera and microphone are not enabled.</p>
-                    <Button onClick={() => initializeLocalStream()} className="bg-rulet-purple hover:bg-rulet-purple-dark">
-                        Enable Camera & Mic
-                    </Button>
-                </div>
-            )}
-          </div>
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="relative w-full h-full">
-            {remoteStream && isCallActive ? (
-              <video 
-                ref={remoteVideoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover bg-rulet-dark"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-rulet-dark">
-                <div className="text-center">
-                  {isSearching && !isCallActive && !incomingCall && (
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rulet-purple mb-4"></div>
-                      <p className="text-lg text-white">
-                        {isSearchingRandom ? "Поиск собеседника..." : `Connecting to user ${targetUserIdInput}...`}
-                      </p>
-                    </div>
-                  )}
-                  {incomingCall && !isCallActive && (
-                    <div className="flex flex-col items-center">
-                      <p className="text-lg text-white mb-4">Incoming call from User ID: {incomingCall.fromUserId}</p>
-                      <div className="flex space-x-4">
-                        <Button onClick={handleAcceptCall} className="bg-green-500 hover:bg-green-600">Accept</Button>
-                        <Button onClick={handleRejectCall} className="bg-red-500 hover:bg-red-600">Reject</Button>
-                      </div>
-                    </div>
-                  )}
-                  {!isSearching && !isCallActive && !incomingCall && (
-                     <p className="text-lg text-white mb-4">
-                        {localStream ? 
-                          (isSearchingRandom ? "Поиск собеседника... Нажмите 'Остановить поиск' для отмены." : 
-                            (targetUserIdInput ? `Calling User ID: ${targetUserIdInput}...` : 
-                              "Click \"Next\" to find a chat partner or enter User ID above."
-                            )
-                          )
-                          : "Enable camera to start."
-                        }
-                     </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-4">
-        <Button
-          onClick={toggleMute}
-          disabled={!localStream}
-          className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
-            isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
-          }`}
-        >
-          {isMuted ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-              <line x1="1" y1="1" x2="23" y2="23"></line>
-              <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
-              <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
-          )}
-        </Button>
-
-        {isCallActive ? (
-            <Button
-                onClick={handleStopCall}
-                className="bg-red-500 hover:bg-red-600 rounded-full w-16 h-16 flex items-center justify-center"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-            </Button>
-        ) : isSearching ? (
-             <Button
-                onClick={handleStopCall}
-                disabled={!isSearchingRandom}
-                className="bg-yellow-500 hover:bg-yellow-600 rounded-full w-16 h-16 flex items-center justify-center"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-            </Button>
-        ) : (
-            <Button
-                onClick={handleStartSearchOrCallNext}
-                disabled={isSearching || isCallActive || !localStream || !!incomingCall}
-                className="bg-rulet-purple hover:bg-rulet-purple-dark rounded-full w-16 h-16 flex items-center justify-center"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-            </Button>
-        )}
-
-        <Button
-          onClick={toggleCamera}
-          disabled={!localStream}
-          className={`rounded-full w-12 h-12 flex items-center justify-center ${ 
-            isCameraOff ? 'bg-red-500 hover:bg-red-600' : 'bg-rulet-purple hover:bg-rulet-purple-dark'
-          }`}
-        >
-          {isCameraOff ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-              <line x1="1" y1="1" x2="23" y2="23"></line>
-              <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"></path>
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="4"></circle>
-            </svg>
-          )}
-        </Button>
-      </div>
     </div>
   );
 };

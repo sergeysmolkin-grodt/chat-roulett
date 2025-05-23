@@ -1,17 +1,17 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import RootApp from './App'
+import App from './App.tsx'
 import './index.css'
 import './i18n'
-import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from './contexts/AuthContext'
+import { Toaster } from 'sonner'
 import './App.css';
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <AuthProvider>
-      <RootApp />
-      <Toaster />
+      <App />
+      <Toaster position="top-right" />
     </AuthProvider>
-  </React.StrictMode>
+  // </React.StrictMode>
 );

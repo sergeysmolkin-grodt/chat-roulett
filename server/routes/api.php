@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\FriendController;
 use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\VideoChatController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -54,4 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Category routes
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::post('/categories', [CategoryController::class, 'store']);
+
+    // Video Chat routes
+    Route::post('/video-chat/start-searching', [VideoChatController::class, 'startSearching']);
+    Route::post('/video-chat/send-signal', [VideoChatController::class, 'sendSignal']);
 }); 

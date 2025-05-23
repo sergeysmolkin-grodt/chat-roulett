@@ -20,6 +20,7 @@ import { Button } from './components/ui/button';
 import { Loader2 } from 'lucide-react';
 import apiService from './services/apiService';
 import { useTranslation } from 'react-i18next';
+import ChatPage from './pages/ChatPage';
 import './App.css';
 
 const PaymentSuccessPage = () => {
@@ -102,7 +103,7 @@ const App = () => {
             <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />} />
             <Route path="/" element={isAuthenticated ? <Index /> : <Navigate to="/welcome" />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/chat" element={<VideoChatPage />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route path="/premium" element={<PremiumPage />} />
               <Route path="/profile" element={<UserProfilePage />} />
               <Route path="/profile/:userId" element={<UserProfilePage />} />
