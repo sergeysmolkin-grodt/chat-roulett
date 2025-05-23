@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import ChatPage from './pages/ChatPage';
 import './App.css';
 import BackgroundSwitcher from './components/BackgroundSwitcher';
+import ProjectBrand from './components/ProjectBrand';
 
 const PaymentSuccessPage = () => {
   const { fetchUser } = useAuth();
@@ -103,6 +104,7 @@ const App = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
+      <ProjectBrand />
       <BackgroundSwitcher />
       <AppBackground />
       {isAuthenticated && <NavBar />}

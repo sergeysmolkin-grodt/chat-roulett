@@ -8,6 +8,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import apiService from '@/services/apiService';
 import { toast as sonnerToast } from 'sonner';
+import { Search, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 
 // Declare Pusher and Echo on the window object
 interface CustomWindow extends Window {
@@ -704,9 +705,9 @@ const VideoChat: React.FC = () => {
                 {user && <p className="text-sm">Logged in as: {user.name} {isMuted ? "[Muted]" : ""} {isCameraOff ? "[Cam Off]" : ""}</p>}
             </div>
 
-            <ResizablePanelGroup direction="horizontal" className="w-full aspect-[16/6] md:aspect-[16/5] rounded-lg border bg-black/30">
-                <ResizablePanel defaultSize={50}>
-                    <div className="flex h-full items-center justify-center p-1 relative video-container">
+            <ResizablePanelGroup direction="horizontal" className="w-screen h-[100vh] min-h-0 rounded-none border-none bg-black/30">
+                <ResizablePanel defaultSize={50} className="w-1/2 h-full">
+                    <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
                         <video 
                             ref={localVideoRef} 
                             autoPlay 
@@ -724,8 +725,8 @@ const VideoChat: React.FC = () => {
                     </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={50}>
-                    <div className="flex h-full items-center justify-center p-1 relative video-container">
+                <ResizablePanel defaultSize={50} className="w-1/2 h-full">
+                    <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
                         {remoteStream && remoteVideoRef.current?.srcObject ? (
                             <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain rounded-md video-element"/>
                         ) : (
@@ -736,41 +737,57 @@ const VideoChat: React.FC = () => {
                 </ResizablePanel>
             </ResizablePanelGroup>
 
-            <div className="mt-4 flex flex-wrap justify-center items-center gap-3">
-                <Button 
-                    onClick={roomId ? () => handleHangUp(true) : handleSearch} 
-                    disabled={isSearching} // Only disable if actively searching, or if in call (handled by roomId presence for text)
-                    className={`px-8 py-3 text-lg font-semibold rounded-md transition-all duration-150 ease-in-out
-                                ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
-                                disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                    {roomId ? 'Hang Up' : isSearching ? 'Searching...' : 'Search Partner'}
-                </Button>
-                <Button onClick={toggleMute} variant="outline" className="px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70" disabled={!localStream}>{isMuted ? 'Unmute Mic' : 'Mute Mic'}</Button>
-                <Button onClick={toggleCamera} variant="outline" className="px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70" disabled={!localStream}>{isCameraOff ? 'Camera On' : 'Camera Off'}</Button>
-
-                {availableVideoDevices.length > 0 && ( // Show selector if devices are enumerated, even if no stream yet
-                    <Select 
-                        onValueChange={handleCameraSelect} 
-                        value={selectedVideoDeviceId} 
-                        disabled={!!roomId || isSearching} 
+            <div className="mt-8 flex flex-col items-center gap-4">
+                <div className="flex justify-center items-center gap-6 flex-wrap w-full max-w-2xl mx-auto">
+                    <button
+                        onClick={toggleMute}
+                        disabled={!localStream}
+                        className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isMuted ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
+                        aria-label={isMuted ? 'Unmute Mic' : 'Mute Mic'}
                     >
-                        <SelectTrigger className="w-[240px] px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70">
-                            <SelectValue placeholder="Select camera" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            {availableVideoDevices.filter(device => device.deviceId).map((device, index) => (
-                                <SelectItem 
-                                    key={device.deviceId}
-                                    value={device.deviceId}
-                                    className="hover:bg-gray-700 focus:bg-gray-600 cursor-pointer"
-                                >
-                                    {device.label || `Camera ${index + 1}`}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
+                        {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
+                    </button>
+                    <button
+                        onClick={toggleCamera}
+                        disabled={!localStream}
+                        className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isCameraOff ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
+                        aria-label={isCameraOff ? 'Camera On' : 'Camera Off'}
+                    >
+                        {isCameraOff ? <VideoOff size={28} /> : <Video size={28} />}
+                    </button>
+                    <div className="flex-1 flex justify-center">
+                        <button
+                            onClick={roomId ? () => handleHangUp(true) : handleSearch}
+                            disabled={isSearching}
+                            className={`rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-lg transition-all duration-150 ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
+                            aria-label={roomId ? 'Hang Up' : 'Search Partner'}
+                        >
+                            <Search size={40} />
+                        </button>
+                    </div>
+                    {availableVideoDevices.length > 0 && (
+                        <Select
+                            onValueChange={handleCameraSelect}
+                            value={selectedVideoDeviceId}
+                            disabled={!!roomId || isSearching}
+                        >
+                            <SelectTrigger className="w-[180px] px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70">
+                                <SelectValue placeholder="Камера" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                                {availableVideoDevices.filter(device => device.deviceId).map((device, index) => (
+                                    <SelectItem
+                                        key={device.deviceId}
+                                        value={device.deviceId}
+                                        className="hover:bg-gray-700 focus:bg-gray-600 cursor-pointer"
+                                    >
+                                        {device.label || `Камера ${index + 1}`}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                </div>
             </div>
             <style>{`
                 .abs-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
