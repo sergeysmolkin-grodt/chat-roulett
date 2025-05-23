@@ -127,7 +127,7 @@ const UserProfilePage = () => {
 
   // interests, bio, avatar_url, city, age, created_at, Premium, username
   return (
-    <div className="min-h-screen bg-rulet-dark text-white pb-20">
+    <div className="min-h-screen text-white pb-20">
       {/* Верхняя секция с аватаром и основной информацией */}
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-8">
@@ -267,44 +267,44 @@ const UserProfilePage = () => {
       {/* Информация о пользователе */}
       <div className="w-full flex flex-col items-center justify-center px-4 space-y-4">
         <div className="w-full max-w-lg flex flex-col gap-4">
-          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-            <CardHeader className="pb-2">
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm text-white">
+            <CardHeader className="pb-2 text-white">
               <CardTitle className="text-lg text-white">Личная информация</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 text-white">
               {user.city && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Локация:</span>
+                  <span>Локация:</span>
                   <span>{user.city}</span>
                 </div>
               )}
               {user.age && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Возраст:</span>
+                  <span>Возраст:</span>
                   <span>{user.age}</span>
                 </div>
               )}
               {user.created_at && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Дата регистрации:</span>
+                  <span>Дата регистрации:</span>
                   <span>{format(new Date(user.created_at), 'dd.MM.yyyy')}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-400">Email:</span>
+                <span>Email:</span>
                 <span>{user.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Пол:</span>
+                <span>Пол:</span>
                 <span>{user.gender}</span>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-            <CardHeader className="pb-2">
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm text-white">
+            <CardHeader className="pb-2 text-white">
               <CardTitle className="text-lg text-white">Интересы</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-white">
               <div className="flex flex-wrap gap-2">
                 {Array.isArray(user.interests) && user.interests.length > 0 ? (
                   user.interests.map((interest: string, index: number) => (
@@ -320,26 +320,26 @@ const UserProfilePage = () => {
                     </HoverCard>
                   ))
                 ) : (
-                  <span className="text-gray-400">Нет интересов</span>
+                  <span>Нет интересов</span>
                 )}
               </div>
             </CardContent>
           </Card>
-          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-            <CardHeader className="pb-2">
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm text-white">
+            <CardHeader className="pb-2 text-white">
               <CardTitle className="text-lg text-white">{t('profilePage.statsTitle') || 'Статистика'}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 text-white">
               <div className="flex justify-between">
-                <span className="text-gray-400">{t('profilePage.stats.calls') || 'Звонки:'}</span>
+                <span>{t('profilePage.stats.calls') || 'Звонки:'}</span>
                 <span>{user.total_calls ?? 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">{t('profilePage.stats.friends') || 'Друзья:'}</span>
+                <span>{t('profilePage.stats.friends') || 'Друзья:'}</span>
                 <span>{user.total_friends ?? 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">{t('profilePage.stats.firstCall') || 'Дата первого звонка:'}</span>
+                <span>{t('profilePage.stats.firstCall') || 'Дата первого звонка:'}</span>
                 <span>{user.first_conversation_at ? format(new Date(user.first_conversation_at), 'dd.MM.yyyy HH:mm') : '—'}</span>
               </div>
             </CardContent>
