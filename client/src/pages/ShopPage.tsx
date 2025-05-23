@@ -155,7 +155,7 @@ const ShopPage = () => {
   const whyPremiumFeatures = t('shopPage.premiumTab.whyPremiumFeatures', { returnObjects: true }) as { title: string, description: string }[];
 
   return (
-    <div className="min-h-screen flex flex-col bg-rulet-dark text-white pb-40">
+    <div className="min-h-screen flex flex-col text-white pb-40">
       <div className="pt-6 px-4">
         <div className="flex items-center gap-2 mb-6">
           <Store className="text-rulet-purple" />
