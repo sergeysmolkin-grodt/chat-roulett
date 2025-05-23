@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 // Типы для данных с бэкенда
 interface UserProfile {
@@ -48,6 +49,32 @@ const getAvatarUrl = (url?: string | null) => {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   return `http://localhost:8081${url}`;
+};
+
+// LanguageSwitcher из CategoriesPage
+const LanguageSwitcher = () => {
+  const { i18n } = useTranslation();
+  const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
+  return (
+    <div className="flex gap-1 bg-black/40 rounded-full px-2 py-1 shadow-lg">
+      <Button 
+        variant={i18n.language === 'ru' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('ru')} 
+        className="text-xs p-1 h-auto"
+      >
+        RU
+      </Button>
+      <Button 
+        variant={i18n.language === 'en' ? "secondary" : "ghost"} 
+        size="sm"
+        onClick={() => changeLanguage('en')} 
+        className="text-xs p-1 h-auto"
+      >
+        EN
+      </Button>
+    </div>
+  );
 };
 
 const FriendsPage = () => {
@@ -280,37 +307,81 @@ const FriendsPage = () => {
             <h1 className="text-xl font-bold">{t('friendsPage.title')}</h1>
           </div>
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             {/* Аватар пользователя слева от кнопки */}
             <a
               href="/profile"
-              className="group flex flex-col items-center justify-center text-center"
-              title={currentUser?.username || currentUser?.name || 'Профиль'}
+              className="group flex flex-col items-center justify-center"
             >
-              <div className="w-12 h-12 rounded-full border-2 border-rulet-purple shadow-lg bg-black/60 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
-                {currentUser?.avatar_url ? (
-                  <img
-                    src={getAvatarUrl(currentUser.avatar_url)}
-                    alt="avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-rulet-purple">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
-                  </svg>
-                )}
-              </div>
-              <div className="text-xs text-gray-300 text-center mt-1 break-words whitespace-normal max-w-[90px]">
+              <Avatar className="w-10 h-10 border-2 border-rulet-purple">
+                <AvatarImage src={getAvatarUrl(currentUser?.avatar_url)} alt={currentUser?.name || ''} />
+                <AvatarFallback className="bg-rulet-purple text-white text-xl">{currentUser?.name?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+              <div className="text-xs text-black text-center mt-1 break-words whitespace-normal">
                 @{currentUser?.username || currentUser?.email || currentUser?.name}
               </div>
             </a>
-            <Button 
-              variant="outline" 
-              className="border-rulet-purple text-rulet-purple flex items-center gap-2"
-              onClick={() => setIsAddFriendModalOpen(true)}
-            >
-              <UserPlus className="w-5 h-5" />
-              {t('friendsPage.addFriend')}
-            </Button>
+            <Dialog open={isAddFriendModalOpen} onOpenChange={setIsAddFriendModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-rulet-purple hover:bg-rulet-purple-dark">
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  {t('friendsPage.addFriend')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-full max-w-md bg-rulet-dark-light border-rulet-purple/50">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Добавить друга</DialogTitle>
+                </DialogHeader>
+                <CardContent className="space-y-4">
+                  <Input
+                    placeholder="Введите имя или email пользователя..."
+                    className="bg-black/40 border-rulet-purple/30 text-white"
+                    onChange={(e) => handleSearchUsers(e.target.value)}
+                  />
+                  {isSearchingUsers && (
+                    <div className="flex justify-center items-center py-3">
+                      <Loader2 className="h-6 w-6 animate-spin text-rulet-purple" />
+                      <p className="ml-2 text-gray-400">Поиск...</p>
+                    </div>
+                  )}
+                  {searchError && !isSearchingUsers &&(
+                     <p className="text-red-500 text-sm text-center">{searchError}</p>
+                  )}
+                  {!isSearchingUsers && searchResults.length === 0 && !searchError && (
+                     <p className="text-gray-400 text-sm text-center">Начните вводить имя или email для поиска.</p>
+                  )}
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {searchResults.map(foundUser => (
+                      <div key={foundUser.id} className="flex items-center justify-between p-2 bg-black/20 rounded">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={foundUser.avatar_url || undefined} />
+                            <AvatarFallback>{foundUser.name?.[0] || ''}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-white">{foundUser.name}</p>
+                            <p className="text-xs text-gray-400">{foundUser.email}</p>
+                          </div>
+                        </div>
+                        {/* Тут нужна проверка, не является ли пользователь уже другом или запрос уже отправлен */}
+                        <Button 
+                          size="sm" 
+                          className="bg-rulet-purple hover:bg-rulet-purple-dark"
+                          onClick={() => handleSendFriendRequest(foundUser.id)}
+                        >
+                          Добавить
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <div className="p-4 flex justify-end">
+                     <Button variant="outline" onClick={() => setIsAddFriendModalOpen(false)} className="border-gray-600 text-gray-300">
+                        Закрыть
+                     </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         
@@ -514,65 +585,6 @@ const FriendsPage = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Модальное окно для добавления друзей */}
-      {isAddFriendModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md bg-rulet-dark-light border-rulet-purple/50">
-            <CardHeader>
-              <CardTitle className="text-white">Добавить друга</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                placeholder="Введите имя или email пользователя..."
-                className="bg-black/40 border-rulet-purple/30 text-white"
-                onChange={(e) => handleSearchUsers(e.target.value)}
-              />
-              {isSearchingUsers && (
-                <div className="flex justify-center items-center py-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-rulet-purple" />
-                  <p className="ml-2 text-gray-400">Поиск...</p>
-                </div>
-              )}
-              {searchError && !isSearchingUsers &&(
-                 <p className="text-red-500 text-sm text-center">{searchError}</p>
-              )}
-              {!isSearchingUsers && searchResults.length === 0 && !searchError && (
-                 <p className="text-gray-400 text-sm text-center">Начните вводить имя или email для поиска.</p>
-              )}
-              <div className="max-h-60 overflow-y-auto space-y-2">
-                {searchResults.map(foundUser => (
-                  <div key={foundUser.id} className="flex items-center justify-between p-2 bg-black/20 rounded">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={foundUser.avatar_url || undefined} />
-                        <AvatarFallback>{foundUser.name?.[0] || ''}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-white">{foundUser.name}</p>
-                        <p className="text-xs text-gray-400">{foundUser.email}</p>
-                      </div>
-                    </div>
-                    {/* Тут нужна проверка, не является ли пользователь уже другом или запрос уже отправлен */}
-                    <Button 
-                      size="sm" 
-                      className="bg-rulet-purple hover:bg-rulet-purple-dark"
-                      onClick={() => handleSendFriendRequest(foundUser.id)}
-                    >
-                      Добавить
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <div className="p-4 flex justify-end">
-                 <Button variant="outline" onClick={() => setIsAddFriendModalOpen(false)} className="border-gray-600 text-gray-300">
-                    Закрыть
-                 </Button>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* Popup ChatBox — draggable */}
       {openChatWith && (

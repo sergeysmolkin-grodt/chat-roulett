@@ -698,104 +698,97 @@ const VideoChat: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col items-center p-4 bg-rulet-bg text-white min-h-screen">
-        <div className="w-full max-w-6xl">
-            <div className="mb-4 text-center">
-                <p className="text-lg">{statusMessage}</p>
-                {user && <p className="text-sm">Logged in as: {user.name} {isMuted ? "[Muted]" : ""} {isCameraOff ? "[Cam Off]" : ""}</p>}
-            </div>
-
-            <ResizablePanelGroup direction="horizontal" className="w-screen h-[100vh] min-h-0 rounded-none border-none bg-black/30">
-                <ResizablePanel defaultSize={50} className="w-1/2 h-full">
-                    <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
-                        <video 
-                            ref={localVideoRef} 
-                            autoPlay 
-                            playsInline 
-                            muted /* Local video should always be muted by browser for user */
-                            className="w-full h-full object-contain rounded-md video-element" 
-                            style={{ transform: 'scaleX(-1)', display: localStream && !isCameraOff ? 'block' : 'none' }}
-                        />
-                        {(!localStream || isCameraOff) && (
-                            <div className="abs-center text-gray-400">
-                                {isCameraOff && localStream ? "Your Camera is Off" : "Enable Camera & Mic or Select Source"}
-                            </div>
-                        )}
-                        <div className="video-label bottom-2 left-2">{user?.name || 'You'} {localStream && isMuted ? "(Mic Muted)" : ""}</div>
-                    </div>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={50} className="w-1/2 h-full">
-                    <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
-                        {remoteStream && remoteVideoRef.current?.srcObject ? (
-                            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain rounded-md video-element"/>
-                        ) : (
-                            <div className="abs-center text-gray-400">{roomId && partnerId ? "Connecting to partner..." : "Waiting for partner video"}</div>
-                        )}
-                        {partnerId && remoteStream && <div className="video-label bottom-2 right-2">Partner (User {partnerId})</div>}
-                    </div>
-                </ResizablePanel>
-            </ResizablePanelGroup>
-
-            <div className="mt-8 flex flex-col items-center gap-4">
-                <div className="flex justify-center items-center gap-6 flex-wrap w-full max-w-2xl mx-auto">
-                    <button
-                        onClick={toggleMute}
-                        disabled={!localStream}
-                        className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isMuted ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
-                        aria-label={isMuted ? 'Unmute Mic' : 'Mute Mic'}
-                    >
-                        {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
-                    </button>
-                    <button
-                        onClick={toggleCamera}
-                        disabled={!localStream}
-                        className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isCameraOff ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
-                        aria-label={isCameraOff ? 'Camera On' : 'Camera Off'}
-                    >
-                        {isCameraOff ? <VideoOff size={28} /> : <Video size={28} />}
-                    </button>
-                    <div className="flex-1 flex justify-center">
-                        <button
-                            onClick={roomId ? () => handleHangUp(true) : handleSearch}
-                            disabled={isSearching}
-                            className={`rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-lg transition-all duration-150 ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
-                            aria-label={roomId ? 'Hang Up' : 'Search Partner'}
-                        >
-                            <Search size={40} />
-                        </button>
-                    </div>
-                    {availableVideoDevices.length > 0 && (
-                        <Select
-                            onValueChange={handleCameraSelect}
-                            value={selectedVideoDeviceId}
-                            disabled={!!roomId || isSearching}
-                        >
-                            <SelectTrigger className="w-[180px] px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70">
-                                <SelectValue placeholder="Камера" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                                {availableVideoDevices.filter(device => device.deviceId).map((device, index) => (
-                                    <SelectItem
-                                        key={device.deviceId}
-                                        value={device.deviceId}
-                                        className="hover:bg-gray-700 focus:bg-gray-600 cursor-pointer"
-                                    >
-                                        {device.label || `Камера ${index + 1}`}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+    <div className="flex flex-col items-center p-0 bg-rulet-bg text-white min-h-screen w-screen">
+        <ResizablePanelGroup direction="horizontal" className="w-screen h-[100vh] min-h-0 rounded-none border-none bg-black/30">
+            <ResizablePanel defaultSize={50} className="w-1/2 h-full">
+                <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
+                    <video 
+                        ref={localVideoRef} 
+                        autoPlay 
+                        playsInline 
+                        muted /* Local video should always be muted by browser for user */
+                        className="w-full h-full object-contain rounded-md video-element" 
+                        style={{ transform: 'scaleX(-1)', display: localStream && !isCameraOff ? 'block' : 'none' }}
+                    />
+                    {(!localStream || isCameraOff) && (
+                        <div className="abs-center text-gray-400">
+                            {isCameraOff && localStream ? "Your Camera is Off" : "Enable Camera & Mic or Select Source"}
+                        </div>
                     )}
+                    <div className="video-label bottom-2 left-2">{user?.name || 'You'} {localStream && isMuted ? "(Mic Muted)" : ""}</div>
                 </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50} className="w-1/2 h-full">
+                <div className="flex h-full w-full items-center justify-center p-1 relative video-container min-h-0">
+                    {remoteStream && remoteVideoRef.current?.srcObject ? (
+                        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain rounded-md video-element"/>
+                    ) : (
+                        <div className="abs-center text-gray-400">{roomId && partnerId ? "Connecting to partner..." : "Waiting for partner video"}</div>
+                    )}
+                    {partnerId && remoteStream && <div className="video-label bottom-2 right-2">Partner (User {partnerId})</div>}
+                </div>
+            </ResizablePanel>
+        </ResizablePanelGroup>
+
+        <div className="mt-8 flex flex-col items-center gap-4">
+            <div className="flex justify-center items-center gap-6 flex-wrap w-full max-w-2xl mx-auto">
+                <button
+                    onClick={toggleMute}
+                    disabled={!localStream}
+                    className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isMuted ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
+                    aria-label={isMuted ? 'Unmute Mic' : 'Mute Mic'}
+                >
+                    {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
+                </button>
+                <button
+                    onClick={toggleCamera}
+                    disabled={!localStream}
+                    className={`rounded-full p-3 text-2xl transition-colors duration-150 ${isCameraOff ? 'bg-red-600 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'} disabled:opacity-50`}
+                    aria-label={isCameraOff ? 'Camera On' : 'Camera Off'}
+                >
+                    {isCameraOff ? <VideoOff size={28} /> : <Video size={28} />}
+                </button>
+                <div className="flex-1 flex justify-center">
+                    <button
+                        onClick={roomId ? () => handleHangUp(true) : handleSearch}
+                        disabled={isSearching}
+                        className={`rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-lg transition-all duration-150 ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
+                        aria-label={roomId ? 'Hang Up' : 'Search Partner'}
+                    >
+                        <Search size={40} />
+                    </button>
+                </div>
+                {availableVideoDevices.length > 0 && (
+                    <Select
+                        onValueChange={handleCameraSelect}
+                        value={selectedVideoDeviceId}
+                        disabled={!!roomId || isSearching}
+                    >
+                        <SelectTrigger className="w-[180px] px-4 py-2 bg-gray-700 border-gray-600 hover:bg-gray-600 disabled:opacity-70">
+                            <SelectValue placeholder="Камера" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                            {availableVideoDevices.filter(device => device.deviceId).map((device, index) => (
+                                <SelectItem
+                                    key={device.deviceId}
+                                    value={device.deviceId}
+                                    className="hover:bg-gray-700 focus:bg-gray-600 cursor-pointer"
+                                >
+                                    {device.label || `Камера ${index + 1}`}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </div>
-            <style>{`
-                .abs-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-                .video-label { position: absolute; background-color: rgba(0,0,0,0.6); padding: 3px 10px; border-radius: 5px; font-size: 0.8rem; color: white; pointer-events: none; }
-                .video-container { background-color: #1a1a1a; border-radius: 0.375rem; overflow: hidden; position: relative; }
-                .video-element { background-color: #000;}
-            `}</style>
         </div>
+        <style>{`
+            .abs-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+            .video-label { position: absolute; background-color: rgba(0,0,0,0.6); padding: 3px 10px; border-radius: 5px; font-size: 0.8rem; color: white; pointer-events: none; }
+            .video-container { background-color: #1a1a1a; border-radius: 0.375rem; overflow: hidden; position: relative; }
+            .video-element { background-color: #000;}
+        `}</style>
     </div>
   );
 };
