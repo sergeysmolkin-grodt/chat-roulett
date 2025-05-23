@@ -37,18 +37,16 @@ const VideoChat: React.FC = () => {
   const [partnerId, setPartnerId] = useState<number | null>(null);
   const [statusMessage, setStatusMessage] = useState('Click "Search Partner" to start.');
   
+  const [pendingOfferDetails, setPendingOfferDetails] = useState<{ roomId: string } | null>(null);
+
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const echoInstanceRef = useRef<any | null>(null); // Using any
   const echoInitializedRef = useRef(false);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-  // Effect to keep currentLocalStreamRef in sync with localStream state
-  useEffect(() => {
-    currentLocalStreamRef.current = localStream;
-  }, [localStream]);
+  // Moved useCallback-memoized functions to the top
 
-  // Initialize Local Media Stream
   const initializeLocalStream = useCallback(async (deviceId?: string, isRetryAttempt: boolean = false) => {
     console.log(`Initializing local stream. Device: ${deviceId || "default"}, Retry: ${isRetryAttempt}, Current stream exists: ${!!currentLocalStreamRef.current}`);
     
@@ -62,6 +60,8 @@ const VideoChat: React.FC = () => {
     }
     setIsCameraOff(false);
     setIsMuted(false);
+
+    console.log(`Attempting to getUserMedia with deviceId: ${deviceId || 'undefined (default)'}`);
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -87,6 +87,7 @@ const VideoChat: React.FC = () => {
         // sonnerToast.success(successMessage); // Maybe too verbose for every init
         return { stream, error: null };
     } catch (error: any) {
+        console.error(`Failed getUserMedia. DeviceId used: ${deviceId || 'default'}. Error name: ${error.name}, message: ${error.message}`);
         console.error('Error accessing media devices:', error);
         const errPrefix = isRetryAttempt ? "Error accessing virtual camera" : "Error accessing media device";
         const errMessage = `${errPrefix} (selected: ${deviceId || 'default'}): ${error.message}. Check permissions or select another.`;
@@ -98,7 +99,7 @@ const VideoChat: React.FC = () => {
         });
         return { stream: null, error };
     }
-  }, [selectedVideoDeviceId, setSelectedVideoDeviceId]); // Added setSelectedVideoDeviceId for consistency, though already there
+  }, [selectedVideoDeviceId]); // Dependency: selectedVideoDeviceId (setSelectedVideoDeviceId is a setState, stable)
 
   const handleHangUp = useCallback((isTerminatingCall = true) => {
     console.log(`Hanging up. Is terminating call: ${isTerminatingCall}`);
@@ -129,74 +130,341 @@ const VideoChat: React.FC = () => {
     }
   }, [roomId]); // roomId is a dependency to correctly leave the room channel.
 
-  // Setup RTCPeerConnection
   const setupPeerConnection = useCallback((currentRoomId: string) => {
     console.log("Setting up PeerConnection for room:", currentRoomId);
     if (pcRef.current) {
+        console.log("Closing existing PeerConnection before setup.");
         pcRef.current.close();
     }
     const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
+    console.log("PeerConnection created.");
 
     // Add transceivers for audio and video to ensure m-lines are present
     pc.addTransceiver('video', { direction: 'sendrecv' });
     pc.addTransceiver('audio', { direction: 'sendrecv' });
+    console.log("Transceivers added.");
 
     pc.onicecandidate = event => {
+        console.log(`onicecandidate event: ${event.candidate ? 'candidate found' : 'no more candidates'}`);
         if (event.candidate && user && currentRoomId && echoInstanceRef.current) {
+            console.log("Sending ICE candidate:", event.candidate);
             apiService.post('/video-chat/send-signal', {
                 roomId: currentRoomId,
                 signalData: { type: 'candidate', candidate: event.candidate },
             }).catch(err => console.error("ICE send error:", err));
         }
     };
+    console.log("onicecandidate handler assigned.");
 
     pc.ontrack = event => {
-        console.log('Remote track received:', event.streams[0]);
+        console.log('Remote track received. Stream:', event.streams[0], "Tracks:", event.streams[0]?.getTracks());
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
         }
         setRemoteStream(event.streams[0]);
     };
+    console.log("ontrack handler assigned.");
 
     pc.onconnectionstatechange = () => {
-        if (pcRef.current) {
-            console.log("PC state:", pcRef.current.connectionState);
-            const state = pcRef.current.connectionState;
+        if (pcRef.current) { // Check pcRef.current as pc might be from a closure
+            const currentPC = pcRef.current;
+            console.log("PC connection state changed:", currentPC.connectionState);
+            const state = currentPC.connectionState;
             if (state === "disconnected" || state === "failed" || state === "closed") {
                  setStatusMessage(prev => (prev.includes("Connecting") || prev.includes("Call connected")) ? "Partner disconnected or connection lost." : prev);
+                 console.log(`PC state is ${state}, calling handleHangUp(false).`);
                  handleHangUp(false);
             }
+        } else {
+            console.log("PC connection state changed, but pcRef.current is null.");
         }
     };
+    console.log("onconnectionstatechange handler assigned.");
 
-    if (localStream) {
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    } else {
-        console.warn("Local stream not available for PC setup. Will proceed without sending local tracks initially.");
-        // Optionally, try to initialize it one last time if critical, but for now, proceed without
-        // initializeLocalStream(selectedVideoDeviceId).then(stream => {
-        //     if (stream && pc.signalingState !== 'closed') {
-        //          stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        //     }
-        // });
-    }
+    // Tracks will be added by the useEffect watching [localStream]
+    // if (localStream) {
+    //     console.log("Local stream exists, adding tracks to new PC.");
+    //     localStream.getTracks().forEach(track => {
+    //         console.log("Adding track to PC:", track);
+    //         pc.addTrack(track, localStream);
+    //     });
+    // } else {
+    //     console.warn("Local stream not available for PC setup. Will proceed without sending local tracks initially.");
+    // }
     pcRef.current = pc;
+    console.log("PeerConnection setup complete, pcRef assigned.");
     return pc;
-  }, [user, handleHangUp]); // Removed localStream, initializeLocalStream, selectedVideoDeviceId from deps
+  }, [user, handleHangUp]); // MODIFIED: Removed localStream from dependencies
+
+  const createOffer = useCallback(async (currentRoomId: string, isDeferredCall = false) => {
+    if (!user || !currentRoomId) {
+        console.log("createOffer: User or currentRoomId missing, returning.", "User:", !!user, "RoomID:", currentRoomId);
+        return;
+    }
+    console.log(`Creating offer for room: ${currentRoomId}. Is deferred: ${isDeferredCall}`);
+    let pc = pcRef.current;
+    if (!pc || pc.signalingState === 'closed') {
+        console.log("createOffer: PC closed or not found, setting up new one.");
+        pc = setupPeerConnection(currentRoomId);
+    }
+    if (!pc) { 
+        console.error("createOffer: Failed to setup PeerConnection for creating offer.");
+        sonnerToast.error("Video connection error: PC setup failed for offer.");
+        return;
+    }
+    
+    if (!localStream) {
+        if (!isDeferredCall) { // Only set pending if this is the initial, non-deferred call
+            console.warn("createOffer: Local stream not available. Setting pending offer details for room:", currentRoomId);
+            setPendingOfferDetails({ roomId: currentRoomId });
+            setStatusMessage('Camera initializing, preparing to send offer...');
+        }
+        // For both initial and deferred calls, if stream is still not here, log and exit
+        console.warn("createOffer: Local stream still not available. Offer will not be made at this time.");
+        // sonnerToast.info("Your Camera/Mic is not available. Waiting for it to send offer.");
+        return; 
+    } else {
+        console.log("createOffer: Local stream available. Tracks should be on PC (or will be shortly by useEffect).");
+    }
+    
+    // Ensure PC is stable. If it's not, and this is a deferred call, something else might be wrong.
+    // If it's an initial call and not stable, it might be okay if it becomes stable soon.
+    if (pc.signalingState !== 'stable') {
+        console.warn(`Skipping offer creation, PC not in stable state: ${pc.signalingState}. isDeferredCall: ${isDeferredCall}`);
+        // If it's an initial call and not stable, perhaps we should also pend, or rely on future calls?
+        // For now, only proceed if stable.
+        if (!isDeferredCall) {
+             // Maybe set pending again if not stable on initial call? Or assume another mechanism will retry?
+        }
+        return; 
+    }
+
+    try {
+        // This part should only execute if localStream is available AND pc is stable.
+        console.log("PC is stable, creating offer. PC state:", pc.signalingState);
+        const offer = await pc.createOffer();
+        console.log("Offer created. PC state before setLocalDescription:", pc.signalingState, "Offer SDP:", offer.sdp ? offer.sdp.substring(0,30)+"..." : "N/A");
+        await pc.setLocalDescription(offer);
+        console.log("Offer set as local description. PC state:", pc.signalingState);
+        apiService.post('/video-chat/send-signal', {
+            roomId: currentRoomId,
+            signalData: { type: 'offer', sdp: offer.sdp },
+        });
+        console.log("Offer sent to signaling server.");
+        setStatusMessage('Offer sent. Waiting for partner...');
+    } catch (error) {
+        console.error('Create offer error:', error);
+        sonnerToast.error("Failed to create video offer.");
+    }
+}, [user, localStream, setupPeerConnection]);
+
+  const handleSignalingData = useCallback(async (data: any) => {
+    if (!roomId || !user) {
+        console.log("handleSignalingData: roomId or user missing, returning.", "RoomID:", roomId, "User:", !!user);
+        return;
+    }
+    let pc = pcRef.current;
+    console.log("handleSignalingData: Received data type:", data?.type, "Current PC state:", pc?.signalingState);
+
+    if (!pc || pc.signalingState === 'closed') {
+        console.log("handleSignalingData: PC closed or not found, setting up new one for room:", roomId);
+        pc = setupPeerConnection(roomId); 
+    }
+    if (!pc) { 
+        console.error("handleSignalingData: Failed to setup PeerConnection for signaling.");
+        sonnerToast.error("Video connection error: PC setup failed.");
+        return;
+    }
+
+    try {
+        if (data.type === 'offer') {
+            console.log("Received offer. PC state before setRemoteDescription:", pc.signalingState, "Offer SDP:", data.sdp ? data.sdp.substring(0,30) + "..." : "N/A");
+            let stream: MediaStream | null = localStream; 
+            if (!stream) {
+                console.log("handleSignalingData (offer): localStream is null, attempting to initialize.");
+                const initResult = await initializeLocalStream(selectedVideoDeviceId); 
+                stream = initResult.stream;
+                if(stream) console.log("handleSignalingData (offer): localStream initialized successfully.");
+                else console.warn("handleSignalingData (offer): localStream initialization failed.");
+            }
+            if (!stream) {
+                sonnerToast.info("Your Camera/Mic is not ready. Will receive video/audio but not send.");
+            }
+            
+            if(pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-remote-offer' || pc.signalingState === 'have-local-pranswer') { 
+                 await pc.setRemoteDescription(new RTCSessionDescription(data));
+                 console.log("Offer set as remote description. PC state:", pc.signalingState);
+                 const answer = await pc.createAnswer();
+                 console.log("Answer created. PC state before setLocalDescription:", pc.signalingState, "Answer SDP:", answer.sdp ? answer.sdp.substring(0,30) + "..." : "N/A");
+                 await pc.setLocalDescription(answer);
+                 console.log("Answer set as local description. PC state:", pc.signalingState);
+                 apiService.post('/video-chat/send-signal', {
+                     roomId: roomId,
+                     signalData: { type: 'answer', sdp: answer.sdp },
+                 });
+                 console.log("Answer sent to signaling server.");
+                 setStatusMessage("Call connected!"); 
+                 sonnerToast.success("Call connected!");
+            } else {
+                console.warn("Received offer in unexpected state:", pc.signalingState, "Offer data:", data);
+            }
+
+        } else if (data.type === 'answer') {
+            console.log("Received answer. PC state before setRemoteDescription:", pc.signalingState, "Answer SDP:", data.sdp ? data.sdp.substring(0,30) + "..." : "N/A");
+            if (pc.signalingState === 'have-local-offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+                console.log("Answer set as remote description. PC state:", pc.signalingState);
+                setStatusMessage("Call connected!");
+                sonnerToast.success("Call connected!");
+            } else {
+                 console.warn("Received answer in unexpected state:", pc.signalingState, "Answer data:", data);
+            }
+        } else if (data.type === 'candidate') {
+            console.log("Received ICE candidate:", data.candidate);
+            if (data.candidate && pc.signalingState !== 'closed' && pc.remoteDescription) { // Ensure remoteDescription is set before adding candidates
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    console.log("ICE candidate added successfully.");
+                } catch (e) {
+                    console.error("Error adding ICE candidate:", e, "Candidate:", data.candidate, "PC State:", pc.signalingState);
+                }
+            } else {
+                console.warn("Could not add ICE candidate. PC State:", pc.signalingState, "RemoteDescription Set:", !!pc.remoteDescription, "Candidate:", data.candidate);
+            }
+        }
+    } catch (error) {
+        console.error('Signaling error during', data?.type, 'handling:', error);
+        sonnerToast.error("Video connection error.");
+    }
+  }, [roomId, user, localStream, setupPeerConnection, initializeLocalStream, selectedVideoDeviceId]);
+
+  const handleSearch = useCallback(async () => {
+    if (!user) {
+        sonnerToast.error('Login required to search.'); return;
+    }
+    
+    let currentStream: MediaStream | null = localStream;
+
+    if (!currentStream) {
+      sonnerToast.info("Attempting to initialize camera...");
+      const initResultObject = await initializeLocalStream(selectedVideoDeviceId);
+      currentStream = initResultObject.stream;
+
+      if (!currentStream && initResultObject.error && (initResultObject.error.name === 'NotReadableError' || initResultObject.error.message?.toLowerCase().includes('device in use') || initResultObject.error.message?.toLowerCase().includes('устройство используется'))) {
+        sonnerToast.info("Primary camera in use or inaccessible. Looking for a virtual camera (e.g., OBS)...", { duration: 4000 });
+        
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const virtualCameraKeywords = ['obs', 'virtual', 'droidcam', 'ivcam', 'epoccam', 'camtwist', 'manycam', 'logi capture', 'vcam', 'snap camera', 'mmhmm'];
+        
+        let foundVirtualCamera: MediaDeviceInfo | null = null;
+        for (const device of videoDevices) {
+          const deviceLabelLower = device.label.toLowerCase();
+          if (virtualCameraKeywords.some(keyword => deviceLabelLower.includes(keyword))) {
+            if (device.deviceId !== selectedVideoDeviceId || !selectedVideoDeviceId) { 
+              foundVirtualCamera = device;
+              break;
+            }
+          }
+        }
+
+        if (foundVirtualCamera) {
+          sonnerToast.info(`Found virtual camera: ${foundVirtualCamera.label}. Attempting to use it.`, { duration: 4000 });
+          setSelectedVideoDeviceId(foundVirtualCamera.deviceId); 
+          const secondInitResultObject = await initializeLocalStream(foundVirtualCamera.deviceId, true);
+          currentStream = secondInitResultObject.stream;
+          if (currentStream) {
+            sonnerToast.success("Virtual camera initialized successfully!");
+          } else {
+            sonnerToast.error(`Failed to initialize virtual camera (${foundVirtualCamera.label}). It might not be running or configured correctly.`);
+          }
+          console.log('Virtual camera init attempt. Stream obtained:', !!currentStream, 'Error:', secondInitResultObject.error);
+        } else if (selectedVideoDeviceId && virtualCameraKeywords.some(k => availableVideoDevices.find(d=>d.deviceId === selectedVideoDeviceId)?.label.toLowerCase().includes(k)) ){
+            sonnerToast.info("The selected camera appears to be a virtual camera but could not be started. Please ensure it's running and not in use by another app.");
+        } else {
+          sonnerToast.info("No alternative virtual camera found. Proceeding without local video if primary/selected camera failed.", { duration: 5000 });
+        }
+      }
+
+      if (!currentStream) {
+        setStatusMessage('No camera/mic. Search continues without sending your video/audio.');
+        sonnerToast.info("Continuing search without sending local video/audio.", { duration: 4000 });
+      } else {
+        // sonnerToast.success("Camera/Mic ready for search."); 
+      }
+    }
+
+    handleHangUp(false); 
+    setIsSearching(true);
+    setStatusMessage('Searching for a partner...');
+    try {
+        const response = await apiService.post('/video-chat/start-searching');
+        // Message from backend can be for info, actual matching happens via Echo
+        if (response.data.message) {
+            console.log("Search API response:", response.data.message);
+            if (!response.data.roomId) { // If not immediately matched
+                 sonnerToast.info(response.data.message); // e.g., "Searching for a partner..."
+            }
+        }
+    } catch (error: any) {
+        setIsSearching(false);
+        setStatusMessage('Search error. Please try again.');
+        sonnerToast.error(error.response?.data?.message || 'Failed to start search.');
+    }
+  }, [user, localStream, initializeLocalStream, selectedVideoDeviceId, handleHangUp, availableVideoDevices]);
+
+  const toggleMute = useCallback(() => {
+    if (localStream) {
+      const currentlyMuted = localStream.getAudioTracks().some(t => !t.enabled);
+      localStream.getAudioTracks().forEach(t => t.enabled = currentlyMuted); // Toggle based on current state
+      setIsMuted(!currentlyMuted);
+      sonnerToast.info(!currentlyMuted ? "Mic Muted" : "Mic Unmuted");
+    } else {
+        sonnerToast.info("Cannot toggle mute: No active microphone stream.");
+    }
+  }, [localStream]);
+
+  const toggleCamera = useCallback(() => {
+    if (localStream) {
+      const currentlyOff = localStream.getVideoTracks().some(t => !t.enabled);
+      localStream.getVideoTracks().forEach(t => t.enabled = currentlyOff); // Toggle based on current state
+      setIsCameraOff(!currentlyOff);
+      sonnerToast.info(!currentlyOff ? "Cam Off" : "Cam On");
+      // Visibility of local video is handled by CSS/style based on isCameraOff and localStream presence
+    } else {
+        sonnerToast.info("Cannot toggle camera: No active camera stream.");
+    }
+  }, [localStream]);
+
+  const handleCameraSelect = useCallback((deviceId: string) => {
+    if (deviceId && deviceId !== selectedVideoDeviceId) {
+        setSelectedVideoDeviceId(deviceId); // Update state immediately
+        initializeLocalStream(deviceId); // Re-initialize with new device
+    }
+  }, [selectedVideoDeviceId, initializeLocalStream]);
+
+  // Effect to keep currentLocalStreamRef in sync with localStream state
+  useEffect(() => {
+    currentLocalStreamRef.current = localStream;
+  }, [localStream]);
 
   // Effect to update PC tracks when localStream changes
   useEffect(() => {
     const pc = pcRef.current;
     if (!pc || pc.signalingState === 'closed') {
-      return; // PC not ready or already closed
+      console.log("useEffect [localStream]: PC not ready or closed, skipping track update. PC:", pc, "Signaling state:", pc?.signalingState);
+      return; 
     }
 
     console.log("useEffect [localStream]: Updating tracks. Has localStream:", !!localStream);
 
     const videoTrack = localStream?.getVideoTracks()[0] || null;
     const audioTrack = localStream?.getAudioTracks()[0] || null;
+
+    let videoReplaced = false;
+    let audioReplaced = false;
 
     const videoTransceiver = pc.getTransceivers().find(
       t => (t.sender.track && t.sender.track.kind === 'video') || (t.receiver.track && t.receiver.track.kind === 'video')
@@ -207,125 +475,73 @@ const VideoChat: React.FC = () => {
 
     if (videoTransceiver && videoTransceiver.sender) {
       videoTransceiver.sender.replaceTrack(videoTrack)
-        .then(() => console.log(`Video track ${videoTrack ? 'set' : 'cleared'} on transceiver.`))
+        .then(() => {
+            console.log(`Video track ${videoTrack ? 'set' : 'cleared'} on transceiver.`);
+            videoReplaced = true;
+            // Check for pending offer after video track is handled
+            if (pendingOfferDetails && pc.signalingState === 'stable' && localStream) { // ensure localStream is still valid
+                 console.log("useEffect [localStream]: Video track processed, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
+                 createOffer(pendingOfferDetails.roomId, true); 
+                 setPendingOfferDetails(null);
+            }
+        })
         .catch(e => console.error('Error replacing video track:', e));
     } else {
         console.warn("Video transceiver sender not found for track replacement.");
+        // If no video transceiver, but audio might exist and an offer is pending
+        if (!audioTransceiver && pendingOfferDetails && pc.signalingState === 'stable' && localStream) {
+            console.log("useEffect [localStream]: No video transceiver, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
+            createOffer(pendingOfferDetails.roomId, true);
+            setPendingOfferDetails(null);
+        }
     }
 
     if (audioTransceiver && audioTransceiver.sender) {
       audioTransceiver.sender.replaceTrack(audioTrack)
-        .then(() => console.log(`Audio track ${audioTrack ? 'set' : 'cleared'} on transceiver.`))
+        .then(() => {
+            console.log(`Audio track ${audioTrack ? 'set' : 'cleared'} on transceiver.`);
+            audioReplaced = true;
+            // Check for pending offer after audio track is (also) handled, 
+            // but only if video didn't already trigger it or if video processing is separate
+            // This logic can become complex if one track is ready before the other and we need both.
+            // For simplicity, let's assume if pendingOfferDetails is still set, it means offer wasn't created.
+            if (pendingOfferDetails && pc.signalingState === 'stable' && localStream) { 
+                 console.log("useEffect [localStream]: Audio track processed, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
+                 createOffer(pendingOfferDetails.roomId, true); 
+                 setPendingOfferDetails(null); // Ensure it's cleared
+            }
+        })
         .catch(e => console.error('Error replacing audio track:', e));
     } else {
         console.warn("Audio transceiver sender not found for track replacement.");
-    }
-  }, [localStream]); // Depends on localStream. pcRef.current is accessed but not a reactive dependency here.
-
-  // Handle Incoming Signaling Data
-  const handleSignalingData = useCallback(async (data: any) => {
-    if (!roomId || !user) return;
-    let pc = pcRef.current;
-    if (!pc || pc.signalingState === 'closed') {
-        console.log("PC closed or not found, setting up new one for room:", roomId);
-        pc = setupPeerConnection(roomId); // This might return a new pc instance
-    }
-    if (!pc) { // Still no PC after setup attempt
-        console.error("Failed to setup PeerConnection for signaling.");
-        sonnerToast.error("Video connection error: PC setup failed.");
-        return;
-    }
-
-    try {
-        if (data.type === 'offer') {
-            console.log("Received offer. PC state:", pc.signalingState);
-            let stream: MediaStream | null = localStream; // Check current state stream
-            if (!stream) {
-                const initResult = await initializeLocalStream(selectedVideoDeviceId); // Attempt to initialize
-                stream = initResult.stream;
-            }
-            if (!stream) {
-                sonnerToast.info("Your Camera/Mic is not ready. Will receive video/audio but not send.");
-            }
-            
-            // Proceed with offer handling
-            if(pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-remote-offer') { // common states to receive an offer
-                 await pc.setRemoteDescription(new RTCSessionDescription(data));
-                 const answer = await pc.createAnswer();
-                 await pc.setLocalDescription(answer);
-                 apiService.post('/video-chat/send-signal', {
-                     roomId: roomId,
-                     signalData: { type: 'answer', sdp: answer.sdp },
-                 });
-                 setStatusMessage("Call connected!"); 
-                 sonnerToast.success("Call connected!");
-            } else {
-                console.warn("Received offer in unexpected state:", pc.signalingState);
-            }
-
-        } else if (data.type === 'answer') {
-            console.log("Received answer. PC state:", pc.signalingState);
-            if (pc.signalingState === 'have-local-offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data));
-                setStatusMessage("Call connected!");
-                sonnerToast.success("Call connected!");
-            } else {
-                 console.warn("Received answer in unexpected state:", pc.signalingState);
-            }
-        } else if (data.type === 'candidate') {
-            if (data.candidate && pc.signalingState !== 'closed') {
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) {
-                    console.error("Error adding ICE candidate:", e);
-                }
-            }
+        // If only video transceiver existed and was handled, and it didn't trigger the offer (e.g. pendingOfferDetails was null then)
+        // but became non-null by the time we check here (less likely with current flow), or if no transceivers at all.
+        if (!videoTransceiver && pendingOfferDetails && pc.signalingState === 'stable' && localStream) { // If no video and no audio transceiver
+             console.log("useEffect [localStream]: No audio/video transceivers, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
+            createOffer(pendingOfferDetails.roomId, true);
+            setPendingOfferDetails(null);
         }
-    } catch (error) {
-        console.error('Signaling error:', error);
-        sonnerToast.error("Video connection error.");
     }
-  }, [roomId, user, localStream, setupPeerConnection, initializeLocalStream, selectedVideoDeviceId]);
+    // Fallback: If localStream is present, but somehow transceivers weren't found (should not happen with addTransceiver)
+    // or if pendingOfferDetails was set *after* replaceTrack promises resolved (unlikely).
+    // if (localStream && pendingOfferDetails && pc.signalingState === 'stable' && !videoReplaced && !audioReplaced) {
+    //     console.warn("useEffect [localStream]: localStream present, pending offer, but tracks may not have been applied. Attempting offer creation for room:", pendingOfferDetails.roomId);
+    //     createOffer(pendingOfferDetails.roomId, true);
+    //     setPendingOfferDetails(null);
+    // }
 
-   // Create Offer function
-   const createOffer = useCallback(async (currentRoomId: string) => {
-    if (!user || !currentRoomId) return;
-    console.log("Creating offer for room:", currentRoomId);
-    let pc = pcRef.current;
-    if (!pc || pc.signalingState === 'closed') {
-        pc = setupPeerConnection(currentRoomId);
-    }
-    if (!pc) { // Still no PC after setup attempt
-        console.error("Failed to setup PeerConnection for creating offer.");
-        sonnerToast.error("Video connection error: PC setup failed for offer.");
-        return;
-    }
+  }, [localStream, pendingOfferDetails, createOffer]);
 
-    // localStream is managed by its own state and useEffect. 
-    // createOffer assumes localStream (and thus tracks on PC via useEffect) is in the desired state.
-    // If localStream is null, offer will be made without local tracks (but with m-lines due to transceivers).
-    if (!localStream) {
-        sonnerToast.info("Your Camera/Mic is not available. Creating offer without sending video/audio.");
+  // Separate useEffect for handling deferred offer creation once all conditions are met
+  useEffect(() => {
+    const pc = pcRef.current;
+    // Ensure pc is defined and ready before checking its signalingState
+    if (localStream && pendingOfferDetails && pc && pc.signalingState === 'stable') {
+      console.log("useEffect [pendingOffer Trigger]: Conditions met (localStream, pendingOffer, PC stable). Creating deferred offer for room:", pendingOfferDetails.roomId);
+      createOffer(pendingOfferDetails.roomId, true);
+      setPendingOfferDetails(null); // Clear pending details immediately after initiating the deferred offer
     }
-    
-    try {
-        if (pc.signalingState === 'stable') { // Only create offer if in stable state
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            apiService.post('/video-chat/send-signal', {
-                roomId: currentRoomId,
-                signalData: { type: 'offer', sdp: offer.sdp },
-            });
-            setStatusMessage('Offer sent. Waiting for partner...');
-        } else {
-            console.warn("Skipping offer creation, PC not in stable state:", pc.signalingState);
-        }
-    } catch (error) {
-        console.error('Create offer error:', error);
-        sonnerToast.error("Failed to create video offer.");
-    }
-}, [user, localStream, setupPeerConnection]);
-
+  }, [localStream, pendingOfferDetails, pcRef.current?.signalingState, createOffer, setPendingOfferDetails]); // Dependencies carefully chosen
 
   // Initialize Echo
   useEffect(() => {
@@ -356,11 +572,12 @@ const VideoChat: React.FC = () => {
 
         (instance as any).private(`user.${user.id}`)
             .listen('.match.found', (event: { roomId: string; userId1: number; userId2: number }) => {
-                console.log('Match found event received:', event);
+                console.log('Match found event received:', event, "Current PC ref state:", pcRef.current?.signalingState);
                 sonnerToast.success('Partner found!');
                 setIsSearching(false);
                 
                 if (pcRef.current && pcRef.current.signalingState !== 'closed') {
+                    console.log("Match found: Closing existing PeerConnection.");
                     pcRef.current.close();
                 }
                 if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
@@ -371,38 +588,24 @@ const VideoChat: React.FC = () => {
                 setPartnerId(pId);
                 setStatusMessage(`User ${pId} found. Connecting...`);
                 
-                let currentPC = pcRef.current; // pcRef.current может быть null или closed от предыдущего вызова
-                // Всегда создаем или пересоздаем PeerConnection при новом матче
-                console.log("Match found: Setting up new PeerConnection for room:", event.roomId);
-                currentPC = setupPeerConnection(event.roomId);
+                // Always create or recreate PeerConnection on new match
+                console.log("Match found: Setting up new PeerConnection for room:", event.roomId, "Caller has localStream:", !!localStream);
+                let currentPC = setupPeerConnection(event.roomId); 
                 
-                if (!currentPC) {
-                     console.error("MATCH_FOUND_ERROR: Failed to setup PeerConnection. Cannot proceed with offer/answer.");
+                if (!currentPC) { 
+                     console.error("MATCH_FOUND_ERROR: setupPeerConnection returned null/undefined. Cannot proceed.");
                      sonnerToast.error("Connection setup error after match found.");
                      return;
                 }
+                console.log("Match found: PeerConnection setup initiated. PC instance from setup:", !!currentPC, "pcRef.current state:", pcRef.current?.signalingState, "Caller has localStream (at this point in match.found handler):", !!localStream);
 
-                // Explicitly apply tracks to the newly created PC if localStream is available
-                // This uses the localStream from the outer scope, which should be up-to-date.
-                if (localStream && currentPC.signalingState !== 'closed') {
-                    console.log("Match found: Explicitly applying tracks to new PC from current localStream");
-                    const videoTrack = localStream.getVideoTracks()[0] || null;
-                    const audioTrack = localStream.getAudioTracks()[0] || null;
-                    currentPC.getTransceivers().forEach(transceiver => {
-                        const sender = transceiver.sender;
-                        if (!sender) return;
-                        if (transceiver.receiver.track?.kind === 'video' || sender.track?.kind === 'video') {
-                            sender.replaceTrack(videoTrack).catch(e => console.error("Error replacing video track on match:", e));
-                        } else if (transceiver.receiver.track?.kind === 'audio' || sender.track?.kind === 'audio') {
-                            sender.replaceTrack(audioTrack).catch(e => console.error("Error replacing audio track on match:", e));
-                        }
-                    });
-                }
+                console.log(`Match found: My ID: ${user.id}, Partner ID: ${pId}, Am I offerer? ${user.id < pId}`);
 
                 if (user.id < pId) {
+                    console.log("Match found: This client (ID:",user.id,") is the offerer. Calling createOffer for room:", event.roomId);
                     createOffer(event.roomId); 
                 } else {
-                    console.log("Match found: This client will await offer. PC state:", currentPC.signalingState);
+                    console.log("Match found: This client (ID:",user.id,") will await offer. PC state:", currentPC.signalingState, "Does it have local stream?", !!localStream);
                 }
             });
     }
@@ -419,7 +622,7 @@ const VideoChat: React.FC = () => {
             // if (window.Echo === echoInstanceRef.current) window.Echo = undefined; // This check is tricky due to ref being nulled
         }
     };
-  }, [user, API_BASE_URL, localStream, createOffer, setupPeerConnection]); // Added localStream, createOffer, setupPeerConnection to deps because they are used in the .listen callback
+  }, [user, API_BASE_URL]); // MODIFIED: Removed localStream, createOffer, setupPeerConnection
   // Note: Dependencies like localStream, createOffer, setupPeerConnection in the Echo init useEffect 
   // might still cause re-runs if their references change. They need to be stable.
 
@@ -483,112 +686,7 @@ const VideoChat: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isAuthLoading, selectedVideoDeviceId]); // initializeLocalStream is useCallback memoized, selectedVideoDeviceId for initial call
-
-  // Action Handlers
-  const handleSearch = async () => {
-    if (!user) {
-        sonnerToast.error('Login required to search.'); return;
-    }
-    
-    let currentStream: MediaStream | null = localStream;
-
-    if (!currentStream) {
-      sonnerToast.info("Attempting to initialize camera...");
-      const initResultObject = await initializeLocalStream(selectedVideoDeviceId);
-      currentStream = initResultObject.stream;
-
-      if (!currentStream && initResultObject.error && (initResultObject.error.name === 'NotReadableError' || initResultObject.error.message?.toLowerCase().includes('device in use') || initResultObject.error.message?.toLowerCase().includes('устройство используется'))) {
-        sonnerToast.info("Primary camera in use or inaccessible. Looking for a virtual camera (e.g., OBS)...", { duration: 4000 });
-        
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        const virtualCameraKeywords = ['obs', 'virtual', 'droidcam', 'ivcam', 'epoccam', 'camtwist', 'manycam', 'logi capture', 'vcam', 'snap camera', 'mmhmm'];
-        
-        let foundVirtualCamera: MediaDeviceInfo | null = null;
-        for (const device of videoDevices) {
-          const deviceLabelLower = device.label.toLowerCase();
-          if (virtualCameraKeywords.some(keyword => deviceLabelLower.includes(keyword))) {
-            if (device.deviceId !== selectedVideoDeviceId || !selectedVideoDeviceId) { 
-              foundVirtualCamera = device;
-              break;
-            }
-          }
-        }
-
-        if (foundVirtualCamera) {
-          sonnerToast.info(`Found virtual camera: ${foundVirtualCamera.label}. Attempting to use it.`, { duration: 4000 });
-          setSelectedVideoDeviceId(foundVirtualCamera.deviceId); 
-          const secondInitResultObject = await initializeLocalStream(foundVirtualCamera.deviceId, true);
-          currentStream = secondInitResultObject.stream;
-          if (currentStream) {
-            sonnerToast.success("Virtual camera initialized successfully!");
-          } else {
-            sonnerToast.error(`Failed to initialize virtual camera (${foundVirtualCamera.label}). It might not be running or configured correctly.`);
-          }
-        } else if (selectedVideoDeviceId && virtualCameraKeywords.some(k => availableVideoDevices.find(d=>d.deviceId === selectedVideoDeviceId)?.label.toLowerCase().includes(k)) ){
-            sonnerToast.info("The selected camera appears to be a virtual camera but could not be started. Please ensure it's running and not in use by another app.");
-        } else {
-          sonnerToast.info("No alternative virtual camera found. Proceeding without local video if primary/selected camera failed.", { duration: 5000 });
-        }
-      }
-
-      if (!currentStream) {
-        setStatusMessage('No camera/mic. Search continues without sending your video/audio.');
-        sonnerToast.info("Continuing search without sending local video/audio.", { duration: 4000 });
-      } else {
-        // sonnerToast.success("Camera/Mic ready for search."); 
-      }
-    }
-
-    handleHangUp(false); 
-    setIsSearching(true);
-    setStatusMessage('Searching for a partner...');
-    try {
-        const response = await apiService.post('/video-chat/start-searching');
-        // Message from backend can be for info, actual matching happens via Echo
-        if (response.data.message) {
-            console.log("Search API response:", response.data.message);
-            if (!response.data.roomId) { // If not immediately matched
-                 sonnerToast.info(response.data.message); // e.g., "Searching for a partner..."
-            }
-        }
-    } catch (error: any) {
-        setIsSearching(false);
-        setStatusMessage('Search error. Please try again.');
-        sonnerToast.error(error.response?.data?.message || 'Failed to start search.');
-    }
-  };
-
-  const toggleMute = () => {
-    if (localStream) {
-      const currentlyMuted = localStream.getAudioTracks().some(t => !t.enabled);
-      localStream.getAudioTracks().forEach(t => t.enabled = currentlyMuted); // Toggle based on current state
-      setIsMuted(!currentlyMuted);
-      sonnerToast.info(!currentlyMuted ? "Mic Muted" : "Mic Unmuted");
-    } else {
-        sonnerToast.info("Cannot toggle mute: No active microphone stream.");
-    }
-  };
-
-  const toggleCamera = () => {
-    if (localStream) {
-      const currentlyOff = localStream.getVideoTracks().some(t => !t.enabled);
-      localStream.getVideoTracks().forEach(t => t.enabled = currentlyOff); // Toggle based on current state
-      setIsCameraOff(!currentlyOff);
-      sonnerToast.info(!currentlyOff ? "Cam Off" : "Cam On");
-      // Visibility of local video is handled by CSS/style based on isCameraOff and localStream presence
-    } else {
-        sonnerToast.info("Cannot toggle camera: No active camera stream.");
-    }
-  };
-
-  const handleCameraSelect = (deviceId: string) => {
-    if (deviceId && deviceId !== selectedVideoDeviceId) {
-        setSelectedVideoDeviceId(deviceId); // Update state immediately
-        initializeLocalStream(deviceId); // Re-initialize with new device
-    }
-  };
+  }, [isAuthenticated, isAuthLoading]); // MODIFIED: Removed selectedVideoDeviceId
 
   // UI Rendering
   if (isAuthLoading && !user) { // Show loading if user data is being fetched and not yet available
@@ -661,7 +759,7 @@ const VideoChat: React.FC = () => {
                             <SelectValue placeholder="Select camera" />
                         </SelectTrigger>
                         <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                            {availableVideoDevices.map((device, index) => (
+                            {availableVideoDevices.filter(device => device.deviceId).map((device, index) => (
                                 <SelectItem 
                                     key={device.deviceId}
                                     value={device.deviceId}

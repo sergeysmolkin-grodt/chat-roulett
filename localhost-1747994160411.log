@@ -1,0 +1,67 @@
+chunk-T2SWDQEL.js?v=320dadc2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+i18n.ts:21 i18next: languageChanged ru-RU
+i18n.ts:21 i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: Array(1), fallbackLng: Array(1), …}
+
+                
+          
+          
+          
+         Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:372 Attempting to initialize Echo for user: 2
+VideoChat.tsx:394 Echo instance created and assigned.
+VideoChat.tsx:53 Initializing local stream. Device: default, Retry: false, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: undefined (default)
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:497 VideoChat unmounting: Stopping local stream tracks.
+VideoChat.tsx:507 VideoChat unmounting: Disconnecting Echo.
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:53 Initializing local stream. Device: 7687166052252a63274a4999987b6507125648c84d2fb290f371f61f979f82cb, Retry: false, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: 7687166052252a63274a4999987b6507125648c84d2fb290f371f61f979f82cb
+VideoChat.tsx:92 Failed getUserMedia. DeviceId used: 7687166052252a63274a4999987b6507125648c84d2fb290f371f61f979f82cb. Error name: NotReadableError, message: Device in use
+(anonymous) @ VideoChat.tsx:92
+await in (anonymous)
+handleSearch @ VideoChat.tsx:526
+callCallback2 @ chunk-T2SWDQEL.js?v=320dadc2:3674
+invokeGuardedCallbackDev @ chunk-T2SWDQEL.js?v=320dadc2:3699
+invokeGuardedCallback @ chunk-T2SWDQEL.js?v=320dadc2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-T2SWDQEL.js?v=320dadc2:3736
+executeDispatch @ chunk-T2SWDQEL.js?v=320dadc2:7014
+processDispatchQueueItemsInOrder @ chunk-T2SWDQEL.js?v=320dadc2:7034
+processDispatchQueue @ chunk-T2SWDQEL.js?v=320dadc2:7043
+dispatchEventsForPlugins @ chunk-T2SWDQEL.js?v=320dadc2:7051
+(anonymous) @ chunk-T2SWDQEL.js?v=320dadc2:7174
+batchedUpdates$1 @ chunk-T2SWDQEL.js?v=320dadc2:18913
+batchedUpdates @ chunk-T2SWDQEL.js?v=320dadc2:3579
+dispatchEventForPluginEventSystem @ chunk-T2SWDQEL.js?v=320dadc2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-T2SWDQEL.js?v=320dadc2:5478
+dispatchEvent @ chunk-T2SWDQEL.js?v=320dadc2:5472
+dispatchDiscreteEvent @ chunk-T2SWDQEL.js?v=320dadc2:5449
+VideoChat.tsx:93 Error accessing media devices: NotReadableError: Device in use
+(anonymous) @ VideoChat.tsx:93
+await in (anonymous)
+handleSearch @ VideoChat.tsx:526
+callCallback2 @ chunk-T2SWDQEL.js?v=320dadc2:3674
+invokeGuardedCallbackDev @ chunk-T2SWDQEL.js?v=320dadc2:3699
+invokeGuardedCallback @ chunk-T2SWDQEL.js?v=320dadc2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-T2SWDQEL.js?v=320dadc2:3736
+executeDispatch @ chunk-T2SWDQEL.js?v=320dadc2:7014
+processDispatchQueueItemsInOrder @ chunk-T2SWDQEL.js?v=320dadc2:7034
+processDispatchQueue @ chunk-T2SWDQEL.js?v=320dadc2:7043
+dispatchEventsForPlugins @ chunk-T2SWDQEL.js?v=320dadc2:7051
+(anonymous) @ chunk-T2SWDQEL.js?v=320dadc2:7174
+batchedUpdates$1 @ chunk-T2SWDQEL.js?v=320dadc2:18913
+batchedUpdates @ chunk-T2SWDQEL.js?v=320dadc2:3579
+dispatchEventForPluginEventSystem @ chunk-T2SWDQEL.js?v=320dadc2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-T2SWDQEL.js?v=320dadc2:5478
+dispatchEvent @ chunk-T2SWDQEL.js?v=320dadc2:5472
+dispatchDiscreteEvent @ chunk-T2SWDQEL.js?v=320dadc2:5449
+VideoChat.tsx:53 Initializing local stream. Device: 8a964bcb638e692d88fd0dd67532b8772c429bc4c8dc0b2314812d1a19b42a72, Retry: true, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: 8a964bcb638e692d88fd0dd67532b8772c429bc4c8dc0b2314812d1a19b42a72
+VideoChat.tsx:53 Initializing local stream. Device: 8a964bcb638e692d88fd0dd67532b8772c429bc4c8dc0b2314812d1a19b42a72, Retry: false, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: 8a964bcb638e692d88fd0dd67532b8772c429bc4c8dc0b2314812d1a19b42a72
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:557 Virtual camera init attempt. Stream obtained: true Error: null
+VideoChat.tsx:107 Hanging up. Is terminating call: false
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:580 Search API response: Match found.

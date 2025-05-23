@@ -1,0 +1,59 @@
+chunk-T2SWDQEL.js?v=320dadc2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+i18n.ts:21 i18next: languageChanged en
+i18n.ts:21 i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: Array(1), fallbackLng: Array(1), …}
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:372 Attempting to initialize Echo for user: 1
+VideoChat.tsx:394 Echo instance created and assigned.
+VideoChat.tsx:53 Initializing local stream. Device: default, Retry: false, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: undefined (default)
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:497 VideoChat unmounting: Stopping local stream tracks.
+VideoChat.tsx:507 VideoChat unmounting: Disconnecting Echo.
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:53 Initializing local stream. Device: 76e9d3cc946163bbcc19e3ff851fb1eba6bd29de20763e7d0a93d1c1000711a1, Retry: false, Current stream exists: false
+VideoChat.tsx:66 Attempting to getUserMedia with deviceId: 76e9d3cc946163bbcc19e3ff851fb1eba6bd29de20763e7d0a93d1c1000711a1
+chrome-error://chromewebdata/:224 Blocked autofocusing on a <input> element in a cross-origin subframe.
+k @ chrome-error://chromewebdata/:224
+$ @ chrome-error://chromewebdata/:224
+g @ chrome-error://chromewebdata/:224
+_$AI @ chrome-error://chromewebdata/:224
+j @ chrome-error://chromewebdata/:224
+onTemplateDataReceived @ chrome-error://chromewebdata/:276
+init @ chrome-error://chromewebdata/:450
+VideoChat.tsx:207 useEffect [localStream]: PC not ready or closed, skipping track update. PC: null Signaling state: undefined
+VideoChat.tsx:107 Hanging up. Is terminating call: false
+VideoChat.tsx:580 Search API response: Searching for a partner...
