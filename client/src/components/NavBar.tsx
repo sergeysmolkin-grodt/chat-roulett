@@ -21,8 +21,8 @@ const NavBar = () => {
   // };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-[#1a1d27] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] rounded-t-3xl">
-      <div className="max-w-md mx-auto px-4 pb-2 pt-1">
+    <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-[#1a1d27] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] rounded-t-3xl w-full max-w-lg">
+      <div className="mx-auto px-4 pb-2 pt-1">
         <div className="flex items-center justify-between">
           <NavbarItem 
             icon={<Home size={24} />} 

@@ -272,7 +272,7 @@ const FriendsPage = () => {
   // const friendRequests = [ /* ... */ ];
   
   return (
-    <div className="min-h-screen bg-rulet-dark text-white pb-20">
+    <div className="min-h-screen text-white pb-20">
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -322,7 +322,7 @@ const FriendsPage = () => {
         />
         
         <Tabs defaultValue="friends" className="w-full">
-          <TabsList className="bg-black/40 text-gray-400 border-b border-rulet-purple/20 rounded-none w-full mb-4 gap-8">
+          <TabsList className="bg-black/20 text-gray-400 border-b border-rulet-purple/20 rounded-none w-full mb-4 gap-8">
             <TabsTrigger value="friends" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
               {t('friendsPage.title')}
             </TabsTrigger>

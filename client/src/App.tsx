@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { Toaster } from '@/components/ui/toaster'; 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -22,6 +22,7 @@ import apiService from './services/apiService';
 import { useTranslation } from 'react-i18next';
 import ChatPage from './pages/ChatPage';
 import './App.css';
+import BackgroundSwitcher from './components/BackgroundSwitcher';
 
 const PaymentSuccessPage = () => {
   const { fetchUser } = useAuth();
@@ -65,8 +66,19 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
+// Компонент для фонового оформления
+const AppBackground = () => {
+  const location = useLocation();
+  if (location.pathname === '/chat') return null;
+  return <>
+    <div className="custom-app-bg" />
+    <div className="custom-app-bg-overlay" />
+  </>;
+};
+
 const App = () => {
   const { user, isLoading, fetchUser, isAuthenticated } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -90,42 +102,41 @@ const App = () => {
   }
 
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
-     
-        <div className="custom-app-bg" />
-        <div className="custom-app-bg-overlay" />
-        {isAuthenticated && <NavBar />}
-        <main className={`flex-grow ${isAuthenticated ? 'pb-16' : ''}`}>
-          <Routes>
-            <Route path="/welcome" element={<WelcomePage />} />
-            <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />
-            <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />} />
-            <Route path="/" element={isAuthenticated ? <Index /> : <Navigate to="/welcome" />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/premium" element={<PremiumPage />} />
-              <Route path="/profile" element={<UserProfilePage />} />
-              <Route path="/profile/:userId" element={<UserProfilePage />} />
-              <Route path="/friends" element={<FriendsPage />} />
-              <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/shop" element={<ShopPage />} />
-              <Route path="/payment/success" element={<PaymentSuccessPage />} />
-            </Route>
-            <Route path="/payment/cancel" element={<PaymentCancelPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-        <Toaster />
-        <SonnerToaster richColors />
-      </div>
-    </Router>
+    <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
+      <BackgroundSwitcher />
+      <AppBackground />
+      {isAuthenticated && <NavBar />}
+      <main className={`flex-grow ${isAuthenticated ? 'pb-16' : ''}`}>
+        <Routes>
+          <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />
+          <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />} />
+          <Route path="/" element={isAuthenticated ? <Index /> : <Navigate to="/welcome" />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/premium" element={<PremiumPage />} />
+            <Route path="/profile" element={<UserProfilePage />} />
+            <Route path="/profile/:userId" element={<UserProfilePage />} />
+            <Route path="/friends" element={<FriendsPage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          </Route>
+          <Route path="/payment/cancel" element={<PaymentCancelPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <Toaster />
+      <SonnerToaster richColors />
+    </div>
   );
 };
 
 const RootApp = () => (
   <AuthProvider>
-    <App />
+    <Router>
+      <App />
+    </Router>
   </AuthProvider>
 );
 
