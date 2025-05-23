@@ -265,85 +265,86 @@ const UserProfilePage = () => {
         </div>
       </div>
       {/* Информация о пользователе */}
-      <div className="px-4 space-y-4">
-        <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-white">Личная информация</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {user.city && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Локация:</span>
-                <span>{user.city}</span>
-              </div>
-            )}
-            {user.age && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Возраст:</span>
-                <span>{user.age}</span>
-              </div>
-            )}
-            {user.created_at && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Дата регистрации:</span>
-                <span>{format(new Date(user.created_at), 'dd.MM.yyyy')}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-400">Email:</span>
-              <span>{user.email}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Пол:</span>
-              <span>{user.gender}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-white">Интересы</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {Array.isArray(user.interests) && user.interests.length > 0 ? (
-                user.interests.map((interest: string, index: number) => (
-                  <HoverCard key={index}>
-                    <HoverCardTrigger asChild>
-                      <Badge className="bg-rulet-purple/30 hover:bg-rulet-purple cursor-pointer">
-                        {interest}
-                      </Badge>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="bg-black/90 border-rulet-purple/30 text-white">
-                      Найти людей с интересом: {interest}
-                    </HoverCardContent>
-                  </HoverCard>
-                ))
-              ) : (
-                <span className="text-gray-400">Нет интересов</span>
+      <div className="w-full flex flex-col items-center justify-center px-4 space-y-4">
+        <div className="w-full max-w-lg flex flex-col gap-4">
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-white">Личная информация</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {user.city && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Локация:</span>
+                  <span>{user.city}</span>
+                </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-        {/* Статистика — теперь динамическая */}
-        <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-white">{t('profilePage.statsTitle') || 'Статистика'}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-400">{t('profilePage.stats.calls') || 'Звонки:'}</span>
-              <span>{user.total_calls ?? 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">{t('profilePage.stats.friends') || 'Друзья:'}</span>
-              <span>{user.total_friends ?? 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">{t('profilePage.stats.firstCall') || 'Дата первого звонка:'}</span>
-              <span>{user.first_conversation_at ? format(new Date(user.first_conversation_at), 'dd.MM.yyyy HH:mm') : '—'}</span>
-            </div>
-          </CardContent>
-        </Card>
+              {user.age && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Возраст:</span>
+                  <span>{user.age}</span>
+                </div>
+              )}
+              {user.created_at && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Дата регистрации:</span>
+                  <span>{format(new Date(user.created_at), 'dd.MM.yyyy')}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-400">Email:</span>
+                <span>{user.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Пол:</span>
+                <span>{user.gender}</span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-white">Интересы</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {Array.isArray(user.interests) && user.interests.length > 0 ? (
+                  user.interests.map((interest: string, index: number) => (
+                    <HoverCard key={index}>
+                      <HoverCardTrigger asChild>
+                        <Badge className="bg-rulet-purple/30 hover:bg-rulet-purple cursor-pointer">
+                          {interest}
+                        </Badge>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="bg-black/90 border-rulet-purple/30 text-white">
+                        Найти людей с интересом: {interest}
+                      </HoverCardContent>
+                    </HoverCard>
+                  ))
+                ) : (
+                  <span className="text-gray-400">Нет интересов</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-white">{t('profilePage.statsTitle') || 'Статистика'}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-400">{t('profilePage.stats.calls') || 'Звонки:'}</span>
+                <span>{user.total_calls ?? 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">{t('profilePage.stats.friends') || 'Друзья:'}</span>
+                <span>{user.total_friends ?? 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">{t('profilePage.stats.firstCall') || 'Дата первого звонка:'}</span>
+                <span>{user.first_conversation_at ? format(new Date(user.first_conversation_at), 'dd.MM.yyyy HH:mm') : '—'}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
       <NavBar />
     </div>
