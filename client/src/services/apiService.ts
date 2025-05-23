@@ -55,6 +55,7 @@ export const stopSearch = () => apiService.post('/chat/stop-search');
 // Categories
 export const getCategories = () => apiService.get('/categories');
 export const createCategory = (data: { name: string; description?: string }) => apiService.post('/categories', data);
+export const updateCategory = (id: number, data: { name: string; description?: string }) => apiService.patch(`/categories/${id}`, data);
 
 // Обновление профиля пользователя
 export const updateUserProfile = (data: Partial<{

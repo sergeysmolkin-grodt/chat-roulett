@@ -52,7 +52,22 @@ class CategoryController extends Controller
      */
     public function update(Request $request, Category $category)
     {
-        return response()->json(['message' => 'Not implemented'], 501);
+        // Только автор может редактировать
+        if ($category->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $category->name = $validated['name'];
+        $category->description = $validated['description'] ?? null;
+        $category->save();
+        $category->load('user:id,name,username');
+
+        return response()->json($category);
     }
 
     /**

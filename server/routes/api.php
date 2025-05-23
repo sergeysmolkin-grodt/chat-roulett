@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Category routes
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::post('/categories', [CategoryController::class, 'store']);
+    Route::patch('/categories/{category}', [CategoryController::class, 'update']);
 
     // Video Chat routes
     Route::post('/video-chat/start-searching', [VideoChatController::class, 'startSearching']);

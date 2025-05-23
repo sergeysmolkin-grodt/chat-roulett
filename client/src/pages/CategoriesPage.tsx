@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import App from '../App';
 import { useNavigate } from 'react-router-dom';
@@ -74,6 +74,10 @@ const CategoriesPage = () => {
   const [selectedRoom, setSelectedRoom] = useState<Category | null>(null);
   const [roomUsers, setRoomUsers] = useState<any[]>([]); // UserProfile[]
   const navigate = useNavigate();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   useEffect(() => {
     fetchCategories();
@@ -152,6 +156,37 @@ const CategoriesPage = () => {
     navigate('/chat', { state: { roomName: room.name } });
   };
 
+  const handleEditCategory = (category: Category) => {
+    setEditCategory(category);
+    setEditName(category.name);
+    setEditDescription(category.description || '');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCategory) return;
+    setIsSubmitting(true);
+    try {
+      await apiService.updateCategory(editCategory.id, {
+        name: editName,
+        description: editDescription,
+      });
+      setCategories(prev => prev.map(cat => cat.id === editCategory.id ? { ...cat, name: editName, description: editDescription } : cat));
+      toast({ title: t('roomsPage.editSuccess', 'Категория обновлена!') });
+      setIsEditDialogOpen(false);
+      setEditCategory(null);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: t('roomsPage.editError', 'Ошибка при обновлении'),
+        description: error.response?.data?.message || t('roomsPage.createErrorDesc'),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isAuthenticated || !user) {
     return (
       <div className="container mx-auto p-4 text-center text-white">
@@ -186,7 +221,7 @@ const CategoriesPage = () => {
                 </svg>
               )}
             </div>
-            <div className="text-xs text-gray-300 text-center mt-1 break-words whitespace-normal">
+            <div className="text-xs text-black text-center mt-1 break-words whitespace-normal">
               @{user?.username || user?.email || user?.name}
             </div>
           </a>
@@ -274,20 +309,27 @@ const CategoriesPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category) => (
-            <Card key={category.id} className="bg-rulet-chat-bg border-rulet-chat-outline text-white flex flex-col justify-between hover:shadow-lg hover:shadow-rulet-purple/30 transition-shadow cursor-pointer" onClick={() => handleEnterRoom(category)}>
-              <CardHeader>
-                <CardTitle className="text-xl text-rulet-purple">{category.name}</CardTitle>
-                <CardDescription className="text-gray-400">
+            <Card key={category.id} className="bg-white/10 border-rulet-chat-outline text-black flex flex-col justify-between hover:shadow-lg hover:shadow-rulet-purple/30 transition-shadow cursor-pointer text-center items-center relative" onClick={() => handleEnterRoom(category)}>
+              <button
+                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 z-10"
+                onClick={e => { e.stopPropagation(); handleEditCategory(category); }}
+                title="Редактировать"
+              >
+                <Pencil size={18} />
+              </button>
+              <CardHeader className="text-center w-full flex flex-col items-center">
+                <CardTitle className="text-xl text-black">{category.name}</CardTitle>
+                <CardDescription className="text-black">
                   {t('roomsPage.createdBy')}: {category.user.username || category.user.name || 'Unknown User'}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-300">
+              <CardContent className="text-center w-full flex flex-col items-center">
+                <p className="text-sm text-gray-800">
                   {category.description || t('roomsPage.noDescription')}
                 </p>
               </CardContent>
-              <CardFooter className="flex justify-between items-center">
-                <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple hover:text-white" onClick={e => { e.stopPropagation(); handleEnterRoomChat(category); }}>
+              <CardFooter className="flex justify-center items-center w-full">
+                <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple hover:text-white mx-auto" onClick={e => { e.stopPropagation(); handleEnterRoomChat(category); }}>
                   {t('roomsPage.joinButton')}
                 </Button>
               </CardFooter>
@@ -295,6 +337,47 @@ const CategoriesPage = () => {
           ))}
         </div>
       )}
+
+      {/* Модальное окно для редактирования категории */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-rulet-dark text-white border-rulet-chat-outline">
+          <DialogHeader>
+            <DialogTitle>{t('roomsPage.editRoomDialogTitle', 'Редактировать комнату')}</DialogTitle>
+            <DialogDescription>{t('roomsPage.editRoomDialogDesc', 'Измените название и описание комнаты')}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditCategorySubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="edit-name" className="text-right">{t('roomsPage.nameLabel')}</label>
+                <Input
+                  id="edit-name"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple text-white placeholder:text-gray-400"
+                  placeholder={t('roomsPage.namePlaceholder')}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="edit-description" className="text-right">{t('roomsPage.descLabel')}</label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                  className="col-span-3 bg-rulet-input border-rulet-chat-outline focus:ring-rulet-purple text-white placeholder:text-gray-400"
+                  placeholder={t('roomsPage.descPlaceholder')}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" className="bg-rulet-purple hover:bg-rulet-purple-dark" disabled={isSubmitting}>
+                {isSubmitting ? t('roomsPage.savingButton', 'Сохранение...') : t('roomsPage.saveButton', 'Сохранить')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
