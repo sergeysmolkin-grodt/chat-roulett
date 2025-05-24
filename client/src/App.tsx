@@ -30,13 +30,17 @@ const PaymentSuccessPage = () => {
 
   useEffect(() => {
     fetchUser();
+    const timer = setTimeout(() => {
+      window.location.href = '/shop';
+    }, 2000);
+    return () => clearTimeout(timer);
   }, [fetchUser]);
 
   return (
     <div className="container mx-auto p-4 text-center">
       <h1 className="text-2xl font-bold text-green-500">Payment Successful!</h1>
       <p>Your subscription has been activated.</p>
-      <Button onClick={() => window.location.href = '/'} className="mt-4">Go to Homepage</Button>
+      <Button onClick={() => window.location.href = '/shop'} className="mt-4">Go to Shop</Button>
     </div>
   );
 };

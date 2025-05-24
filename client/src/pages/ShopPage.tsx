@@ -15,6 +15,8 @@ const ShopPage = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
+  const [isLoadingAntiskip, setIsLoadingAntiskip] = useState(false);
+  const [isLoadingPremium, setIsLoadingPremium] = useState(false);
 
   useEffect(() => {
     document.title = 'YNYIETY.shop';
@@ -67,7 +69,7 @@ const ShopPage = () => {
     {
       id: 1,
       name: t('shopPage.premiumTab.premiumPlan.name'),
-      price: "699 ₽",
+      price: "$15",
       period: t('shopPage.premiumTab.premiumPlan.priceSuffix'),
       features: t('shopPage.premiumTab.premiumPlan.features', { returnObjects: true }) as string[],
       popular: true,
@@ -81,7 +83,7 @@ const ShopPage = () => {
   const antiskipProduct = {
     id: 101,
     name: t('shopPage.premiumTab.antiskip.name'),
-    price: "149 ₽",
+    price: "$10",
     description: t('shopPage.premiumTab.antiskip.description'),
     features: t('shopPage.premiumTab.antiskip.features', { returnObjects: true }) as string[],
     color: "bg-gradient-to-br from-slate-700 to-slate-800",
@@ -92,11 +94,49 @@ const ShopPage = () => {
       toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });
       return;
     }
-    toast({
-      title: t('shopPage.notifications.antiskipPurchaseTitle'),
-      description: t('shopPage.notifications.antiskipPurchaseDescription'),
-      variant: "default"
-    });
+    setIsLoadingAntiskip(true);
+    try {
+      const response = await apiClient.post('payment/create-antiskip-checkout-session');
+      const { checkout_url } = response.data;
+      if (!checkout_url) {
+        throw new Error(t('shopPage.notifications.checkoutUrlError'));
+      }
+      window.location.href = checkout_url;
+    } catch (error: any) {
+      console.error("Ошибка при создании сессии Stripe Checkout:", error);
+      toast({
+        title: t('shopPage.notifications.subscriptionErrorTitle'),
+        description: t('shopPage.notifications.subscriptionErrorDescription'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAntiskip(false);
+    }
+  };
+
+  const handlePurchasePremium = async () => {
+    if (!user) {
+      toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });
+      return;
+    }
+    setIsLoadingPremium(true);
+    try {
+      const response = await apiClient.post('payment/create-checkout-session');
+      const { checkout_url } = response.data;
+      if (!checkout_url) {
+        throw new Error(t('shopPage.notifications.checkoutUrlError'));
+      }
+      window.location.href = checkout_url;
+    } catch (error: any) {
+      console.error("Ошибка при создании сессии Stripe Checkout:", error);
+      toast({
+        title: t('shopPage.notifications.subscriptionErrorTitle'),
+        description: t('shopPage.notifications.subscriptionErrorDescription'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPremium(false);
+    }
   };
 
   const whyPremiumFeatures = t('shopPage.premiumTab.whyPremiumFeatures', { returnObjects: true }) as { title: string, description: string }[];
@@ -205,8 +245,9 @@ const ShopPage = () => {
                     <Button 
                       className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
                       onClick={handlePurchaseAntiskip}
+                      disabled={isLoadingAntiskip}
                     >
-                      {t('shopPage.premiumTab.antiskip.buyButton')}
+                      {isLoadingAntiskip ? 'Processing...' : t('shopPage.premiumTab.antiskip.buyButton')}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -242,10 +283,10 @@ const ShopPage = () => {
                     <CardFooter className="p-6 bg-black/20">
                       <Button 
                         className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
-                        onClick={() => handleInitiateSubscription(plan.id)}
-                        disabled={isLoadingCheckout}
+                        onClick={handlePurchasePremium}
+                        disabled={isLoadingPremium}
                       >
-                        {isLoadingCheckout ? t('shopPage.premiumTab.processingButton') : t('shopPage.premiumTab.premiumPlan.activateButton')}
+                        {isLoadingPremium ? 'Processing...' : t('shopPage.premiumTab.premiumPlan.activateButton')}
                       </Button>
                     </CardFooter>
                   </Card>

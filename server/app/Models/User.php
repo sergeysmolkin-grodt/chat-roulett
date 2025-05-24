@@ -41,6 +41,7 @@ class User extends Authenticatable
         'interests',
         'total_calls',
         'first_conversation_at',
+        'antiskip_until',
     ];
 
     /**
@@ -71,6 +72,7 @@ class User extends Authenticatable
             'interests' => 'array',
             'total_calls' => 'integer',
             'first_conversation_at' => 'datetime',
+            'antiskip_until' => 'datetime',
         ];
     }
 

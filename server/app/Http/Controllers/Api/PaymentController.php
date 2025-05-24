@@ -169,12 +169,78 @@ class PaymentController extends Controller
         if ($subscription->current_period_end) {
             $user->subscription_ends_at = Carbon::createFromTimestamp($subscription->current_period_end);
         } else {
-            // Если нет current_period_end (например, подписка отменена и не будет продлеваться)
-            // Можно оставить старую дату или установить null, в зависимости от логики
-             $user->subscription_ends_at = null;
+            $user->subscription_ends_at = null;
         }
-        
+
+        // --- Antiskip активация ---
+        $antiskipPriceId = config('services.stripe.price_id_antiskip');
+        $isAntiskip = false;
+        if (isset($subscription->items) && isset($subscription->items->data)) {
+            foreach ($subscription->items->data as $item) {
+                if (isset($item->price) && $item->price->id === $antiskipPriceId) {
+                    $isAntiskip = true;
+                    break;
+                }
+            }
+        }
+        if ($isAntiskip && $subscription->status === 'active') {
+            $user->antiskip_until = Carbon::createFromTimestamp($subscription->current_period_end);
+        }
+        // --- End Antiskip ---
+
         $user->save();
-        \Log::info('User subscription updated', ['user_id' => $user->id, 'status' => $subscription->status, 'ends_at' => $user->subscription_ends_at]);
+        \Log::info('User subscription updated', ['user_id' => $user->id, 'status' => $subscription->status, 'ends_at' => $user->subscription_ends_at, 'antiskip_until' => $user->antiskip_until]);
+    }
+
+    public function createAntiskipCheckoutSession(Request $request): \Illuminate\Http\JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $stripeCustomerId = $user->stripe_customer_id;
+        if (!$stripeCustomerId) {
+            try {
+                $customer = \Stripe\Customer::create([
+                    'email' => $user->email,
+                    'name' => $user->name,
+                ]);
+                $stripeCustomerId = $customer->id;
+                $user->stripe_customer_id = $stripeCustomerId;
+                $user->save();
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Не удалось создать клиента Stripe: ' . $e->getMessage()], 500);
+            }
+        }
+
+        $priceId = config('services.stripe.price_id_antiskip');
+        if (!$priceId) {
+            return response()->json(['error' => 'Stripe Price ID для Antiskip не настроен.'], 500);
+        }
+
+        $successUrl = config('app.frontend_url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}';
+        $cancelUrl = config('app.frontend_url') . '/payment/cancel';
+
+        try {
+            $checkoutSession = StripeCheckoutSession::create([
+                'customer' => $stripeCustomerId,
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'mode' => 'subscription',
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
+            ]);
+
+            return response()->json([
+                'checkout_session_id' => $checkoutSession->id,
+                'stripe_public_key' => config('services.stripe.key'),
+                'checkout_url' => $checkoutSession->url
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Не удалось создать сессию Stripe Checkout: ' . $e->getMessage()], 500);
+        }
     }
 }

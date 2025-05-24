@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
       '/api': 'http://localhost:8081',
       '/sanctum': 'http://localhost:8081',
     },
+    historyApiFallback: true,
   },
   plugins: [
     react(),

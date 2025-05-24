@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Stripe Checkout
     Route::post('/payment/create-checkout-session', [PaymentController::class, 'createCheckoutSession']);
+    Route::post('/payment/create-antiskip-checkout-session', [PaymentController::class, 'createAntiskipCheckoutSession']);
 
     // Video Signaling Routes
     Route::post('/video/offer/{userId}', [VideoSignalingController::class, 'sendOffer']);

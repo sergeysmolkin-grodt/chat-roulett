@@ -16,6 +16,7 @@ import { updateUserProfile, uploadAvatar } from '@/services/apiService';
 import { useForm } from 'react-hook-form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 const getAvatarUrl = (url?: string | null) => {
   if (!url) return undefined;
@@ -24,7 +25,7 @@ const getAvatarUrl = (url?: string | null) => {
 };
 
 const UserProfilePage = () => {
-  const { user, isLoading, fetchUser } = useAuth();
+  const { user, isLoading, fetchUser, logout } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
@@ -44,6 +45,7 @@ const UserProfilePage = () => {
   });
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = 'YNYIETY';
@@ -127,7 +129,7 @@ const UserProfilePage = () => {
 
   // interests, bio, avatar_url, city, age, created_at, Premium, username
   return (
-    <div className="min-h-screen text-white pb-20">
+    <div className="min-h-screen text-white pb-20 flex flex-col">
       {/* Верхняя секция с аватаром и основной информацией */}
       <div className="pt-6 px-4">
         <div className="flex items-center justify-between mb-8">
@@ -345,6 +347,16 @@ const UserProfilePage = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+      {/* Кнопка Logout */}
+      <div className="flex justify-center mt-8 mb-4">
+        <Button
+          variant="destructive"
+          className="px-8 py-3 text-lg font-bold rounded-xl"
+          onClick={async () => { await logout(); navigate('/login'); }}
+        >
+          Выйти из аккаунта
+        </Button>
       </div>
       <NavBar />
     </div>
