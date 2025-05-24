@@ -89,6 +89,11 @@ const ShopPage = () => {
     color: "bg-gradient-to-br from-slate-700 to-slate-800",
   };
 
+  // Типизация user с antiskip_until
+  type UserWithAntiskip = typeof user & { antiskip_until?: string | Date };
+  const userWithAntiskip = user as UserWithAntiskip;
+  const isAntiskipActive = userWithAntiskip && userWithAntiskip.antiskip_until && new Date(userWithAntiskip.antiskip_until) > new Date();
+
   const handlePurchaseAntiskip = async () => {
     if (!user) {
       toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });
@@ -204,22 +209,6 @@ const ShopPage = () => {
                 </p>
               </div>
 
-              {isSubscribed && (
-                <div className="mb-12 text-center p-6 bg-green-500/10 border border-green-500 rounded-lg">
-                    <h2 className="text-2xl font-bold text-green-400">{t('shopPage.premiumTab.subscribedMessageTitle')}</h2>
-                    {user?.subscription_ends_at && (
-                        <p className="text-gray-300">{t('shopPage.premiumTab.subscriptionEndsText')} {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
-                    )}
-                </div>
-              )}
-
-              {isFemale && (
-                 <div className="mb-12 text-center p-6 bg-pink-500/10 border border-pink-500 rounded-lg">
-                    <h2 className="text-2xl font-bold text-pink-400">{t('shopPage.premiumTab.femaleAccessMessageTitle')}</h2>
-                    <p className="text-gray-300">{t('shopPage.premiumTab.femaleAccessMessageText')}</p>
-                </div>
-              )}
-              
               {/* Карточки: Антискип и Премиум */}
               <div className="flex flex-col lg:flex-row gap-6 justify-center items-start mb-8">
                 {/* Антискип */}
@@ -227,9 +216,11 @@ const ShopPage = () => {
                   <CardHeader className="pb-3 pt-4">
                     <CardTitle className="text-xl">{antiskipProduct.name}</CardTitle>
                     <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
-                    <div className="flex items-end gap-1 mt-1">
-                      <span className="text-2xl font-bold">{antiskipProduct.price}</span>
-                    </div>
+                    {!isAntiskipActive && (
+                      <div className="flex items-end gap-1 mt-1">
+                        <span className="text-2xl font-bold">{antiskipProduct.price}</span>
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="pb-4 flex-grow">
                     <ul className="space-y-1.5 mb-4">
@@ -242,16 +233,22 @@ const ShopPage = () => {
                     </ul>
                   </CardContent>
                   <CardFooter className="p-4 bg-black/20">
-                    <Button 
-                      className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
-                      onClick={handlePurchaseAntiskip}
-                      disabled={isLoadingAntiskip}
-                    >
-                      {isLoadingAntiskip ? 'Processing...' : t('shopPage.premiumTab.antiskip.buyButton')}
-                    </Button>
+                    {isAntiskipActive ? (
+                      <div className="w-full text-center text-sky-400 font-bold text-lg">
+                        {t('shopPage.premiumTab.antiskip.active', 'Активен Anti-Skip до')}: {userWithAntiskip?.antiskip_until ? new Date(userWithAntiskip.antiskip_until).toLocaleDateString() : '-'}
+                      </div>
+                    ) : (
+                      <Button 
+                        className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
+                        onClick={handlePurchaseAntiskip}
+                        disabled={isLoadingAntiskip}
+                      >
+                        {isLoadingAntiskip ? 'Processing...' : t('shopPage.premiumTab.antiskip.buyButton')}
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
-                {/* Премиум — только для мужчин без подписки */}
+                {/* Премиум — только для мужчин */}
                 {isAuthenticated && user && user.gender === 'male' && (
                   <Card key={premiumPlans[0].id} className={`border-2 border-yellow-500 ${premiumPlans[0].color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
                     {premiumPlans[0].popular && (
@@ -264,10 +261,12 @@ const ShopPage = () => {
                         <CardTitle className="text-2xl">{premiumPlans[0].name}</CardTitle>
                         <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
                       </div>
-                      <div className="flex items-end gap-1 mt-2">
-                        <span className="text-3xl font-bold">{premiumPlans[0].price}</span>
-                        <span className="text-base opacity-80">{premiumPlans[0].period}</span>
-                      </div>
+                      {!isSubscribed && (
+                        <div className="flex items-end gap-1 mt-2">
+                          <span className="text-3xl font-bold">{premiumPlans[0].price}</span>
+                          <span className="text-base opacity-80">{premiumPlans[0].period}</span>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="pb-6 flex-grow">
                       <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
@@ -283,7 +282,7 @@ const ShopPage = () => {
                     <CardFooter className="p-6 bg-black/20">
                       {isSubscribed ? (
                         <div className="w-full text-center text-green-400 font-bold text-lg">
-                          {t('shopPage.premiumTab.activeUntil', 'Active until')}: {user?.subscription_ends_at ? new Date(user.subscription_ends_at).toLocaleDateString() : '-'}
+                          {t('shopPage.premiumTab.premium.active', 'Активна Premium-подписка до')}: {user?.subscription_ends_at ? new Date(user.subscription_ends_at).toLocaleDateString() : '-'}
                         </div>
                       ) : (
                         <Button 

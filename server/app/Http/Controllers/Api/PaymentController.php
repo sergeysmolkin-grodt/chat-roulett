@@ -163,37 +163,41 @@ class PaymentController extends Controller
             return;
         }
 
-        $user->subscription_id = $subscription->id;
-        $user->subscription_status = $subscription->status; // e.g., active, past_due, canceled, trialing
-
-        // --- Получаем дату окончания подписки ---
-        $currentPeriodEnd = null;
-        if (isset($subscription->items) && isset($subscription->items->data[0]) && isset($subscription->items->data[0]->current_period_end)) {
-            $currentPeriodEnd = $subscription->items->data[0]->current_period_end;
-        }
-        if ($currentPeriodEnd) {
-            $user->subscription_ends_at = Carbon::createFromTimestamp($currentPeriodEnd);
-        } else {
-            $user->subscription_ends_at = null;
-        }
-        // --- End Получаем дату окончания подписки ---
-
-        // --- Antiskip активация ---
+        $premiumPriceId = config('services.stripe.price_id');
         $antiskipPriceId = config('services.stripe.price_id_antiskip');
-        $isAntiskip = false;
+        $hasPremium = false;
+        $hasAntiskip = false;
+        $premiumPeriodEnd = null;
+        $antiskipPeriodEnd = null;
         if (isset($subscription->items) && isset($subscription->items->data)) {
             foreach ($subscription->items->data as $item) {
+                if (isset($item->price) && $item->price->id === $premiumPriceId) {
+                    $hasPremium = true;
+                    if (isset($item->current_period_end)) {
+                        $premiumPeriodEnd = $item->current_period_end;
+                    }
+                }
                 if (isset($item->price) && $item->price->id === $antiskipPriceId) {
-                    $isAntiskip = true;
-                    break;
+                    $hasAntiskip = true;
+                    if (isset($item->current_period_end)) {
+                        $antiskipPeriodEnd = $item->current_period_end;
+                    }
                 }
             }
         }
-        if ($isAntiskip && $subscription->status === 'active') {
-            $user->antiskip_until = Carbon::createFromTimestamp($subscription->current_period_end);
+        // Обновляем только соответствующие поля
+        if ($hasPremium) {
+            $user->subscription_id = $subscription->id;
+            $user->subscription_status = $subscription->status;
+            if ($premiumPeriodEnd) {
+                $user->subscription_ends_at = Carbon::createFromTimestamp($premiumPeriodEnd);
+            }
         }
-        // --- End Antiskip ---
-
+        if ($hasAntiskip && $subscription->status === 'active') {
+            if ($antiskipPeriodEnd) {
+                $user->antiskip_until = Carbon::createFromTimestamp($antiskipPeriodEnd);
+            }
+        }
         $user->save();
         \Log::info('User subscription updated', ['user_id' => $user->id, 'status' => $subscription->status, 'ends_at' => $user->subscription_ends_at, 'antiskip_until' => $user->antiskip_until]);
     }
