@@ -252,27 +252,27 @@ const ShopPage = () => {
                   </CardFooter>
                 </Card>
                 {/* Премиум — только для мужчин без подписки */}
-                {isAuthenticated && user && user.gender === 'male' && !isSubscribed && premiumPlans.map(plan => (
-                  <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
-                    {plan.popular && (
+                {isAuthenticated && user && user.gender === 'male' && (
+                  <Card key={premiumPlans[0].id} className={`border-2 border-yellow-500 ${premiumPlans[0].color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
+                    {premiumPlans[0].popular && (
                       <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
                         {t('shopPage.premiumTab.popularBadge')}
                       </div>
                     )}
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                        <CardTitle className="text-2xl">{premiumPlans[0].name}</CardTitle>
                         <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
                       </div>
                       <div className="flex items-end gap-1 mt-2">
-                        <span className="text-3xl font-bold">{plan.price}</span>
-                        <span className="text-base opacity-80">{plan.period}</span>
+                        <span className="text-3xl font-bold">{premiumPlans[0].price}</span>
+                        <span className="text-base opacity-80">{premiumPlans[0].period}</span>
                       </div>
                     </CardHeader>
                     <CardContent className="pb-6 flex-grow">
                       <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
                       <ul className="space-y-2 mb-6">
-                        {plan.features.map((feature, idx) => (
+                        {premiumPlans[0].features.map((feature, idx) => (
                           <li key={idx} className="flex items-center gap-2">
                             <ThumbsUp className="w-5 h-5 text-green-400" />
                             <span className="text-base">{feature}</span>
@@ -281,16 +281,22 @@ const ShopPage = () => {
                       </ul>
                     </CardContent>
                     <CardFooter className="p-6 bg-black/20">
-                      <Button 
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
-                        onClick={handlePurchasePremium}
-                        disabled={isLoadingPremium}
-                      >
-                        {isLoadingPremium ? 'Processing...' : t('shopPage.premiumTab.premiumPlan.activateButton')}
-                      </Button>
+                      {isSubscribed ? (
+                        <div className="w-full text-center text-green-400 font-bold text-lg">
+                          {t('shopPage.premiumTab.activeUntil', 'Active until')}: {user?.subscription_ends_at ? new Date(user.subscription_ends_at).toLocaleDateString() : '-'}
+                        </div>
+                      ) : (
+                        <Button 
+                          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
+                          onClick={handlePurchasePremium}
+                          disabled={isLoadingPremium}
+                        >
+                          {isLoadingPremium ? 'Processing...' : t('shopPage.premiumTab.premiumPlan.activateButton')}
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
-                ))}
+                )}
               </div>
               <div className="text-center text-sm text-gray-400 mt-8">
                 {t('shopPage.premiumTab.cancellationPolicy')}

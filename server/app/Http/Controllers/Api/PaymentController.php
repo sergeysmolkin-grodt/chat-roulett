@@ -166,11 +166,17 @@ class PaymentController extends Controller
         $user->subscription_id = $subscription->id;
         $user->subscription_status = $subscription->status; // e.g., active, past_due, canceled, trialing
 
-        if ($subscription->current_period_end) {
-            $user->subscription_ends_at = Carbon::createFromTimestamp($subscription->current_period_end);
+        // --- Получаем дату окончания подписки ---
+        $currentPeriodEnd = null;
+        if (isset($subscription->items) && isset($subscription->items->data[0]) && isset($subscription->items->data[0]->current_period_end)) {
+            $currentPeriodEnd = $subscription->items->data[0]->current_period_end;
+        }
+        if ($currentPeriodEnd) {
+            $user->subscription_ends_at = Carbon::createFromTimestamp($currentPeriodEnd);
         } else {
             $user->subscription_ends_at = null;
         }
+        // --- End Получаем дату окончания подписки ---
 
         // --- Antiskip активация ---
         $antiskipPriceId = config('services.stripe.price_id_antiskip');
