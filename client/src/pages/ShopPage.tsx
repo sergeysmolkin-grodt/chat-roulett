@@ -74,39 +74,6 @@ const ShopPage = () => {
     }
   ];
   
-  const accessories = [
-    {
-      id: 1,
-      name: "Премиум аватары",
-      description: "Коллекция эксклюзивных аватаров для вашего профиля",
-      price: "99 ₽",
-      image: "/placeholder.svg"
-    },
-    {
-      id: 2,
-      name: "Анимированные эффекты",
-      description: "Специальные эффекты для ваших видеозвонков",
-      price: "149 ₽",
-      image: "/placeholder.svg",
-      tag: t('shopPage.accessoriesTab.placeholderTag')
-    },
-    {
-      id: 3,
-      name: "Набор стикеров",
-      description: "30+ уникальных стикеров для чата",
-      price: "79 ₽",
-      image: "/placeholder.svg"
-    },
-    {
-      id: 4,
-      name: "Золотая рамка профиля",
-      description: "Выделите свой профиль золотой рамкой VIP",
-      price: "199 ₽",
-      image: "/placeholder.svg",
-      tag: "Новинка"
-    }
-  ];
-
   const isSubscribed = isAuthenticated && user && user.subscription_status === 'active';
   const isFemale = isAuthenticated && user && user.gender === 'female';
 
@@ -119,15 +86,6 @@ const ShopPage = () => {
     color: "bg-gradient-to-br from-slate-700 to-slate-800",
   };
 
-  const accessoriesProduct = {
-    id: 102,
-    name: t('shopPage.premiumTab.allAccessories.name'),
-    price: "399 ₽",
-    description: t('shopPage.premiumTab.allAccessories.description'),
-    features: t('shopPage.premiumTab.allAccessories.features', { returnObjects: true }) as string[],
-    color: "bg-gradient-to-br from-pink-500/80 to-rose-600/80",
-  };
-
   const handlePurchaseAntiskip = async () => {
     if (!user) {
       toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });
@@ -136,18 +94,6 @@ const ShopPage = () => {
     toast({
       title: t('shopPage.notifications.antiskipPurchaseTitle'),
       description: t('shopPage.notifications.antiskipPurchaseDescription'),
-      variant: "default"
-    });
-  };
-
-  const handlePurchaseAccessories = async () => {
-    if (!user) {
-      toast({ title: t('shopPage.notifications.loginErrorTitle'), description: t('shopPage.notifications.loginErrorDescription'), variant: "destructive" });
-      return;
-    }
-    toast({
-      title: t('shopPage.notifications.allAccessoriesPurchaseTitle'),
-      description: t('shopPage.notifications.allAccessoriesPurchaseDescription'),
       variant: "default"
     });
   };
@@ -166,9 +112,6 @@ const ShopPage = () => {
           <TabsList className="bg-black/40 text-gray-400 border-b border-rulet-purple/20 rounded-none w-full mb-6 gap-8">
             <TabsTrigger value="premium" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
               {t('shopPage.tabs.premium')}
-            </TabsTrigger>
-            <TabsTrigger value="accessories" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
-              {t('shopPage.tabs.accessoriesStore')}
             </TabsTrigger>
           </TabsList>
           
@@ -270,34 +213,6 @@ const ShopPage = () => {
                   </CardFooter>
                 </Card>
               ))}
-              {/* Аксессуары */}
-              <Card key={accessoriesProduct.id} className={`border border-pink-400/60 ${accessoriesProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
-                <CardHeader className="pb-3 pt-4">
-                  <CardTitle className="text-xl">{accessoriesProduct.name}</CardTitle>
-                  <p className="text-sm text-gray-100">{accessoriesProduct.description}</p>
-                  <div className="flex items-end gap-1 mt-1">
-                    <span className="text-2xl font-bold">{accessoriesProduct.price}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-4 flex-grow">
-                  <ul className="space-y-1.5 mb-4">
-                    {accessoriesProduct.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-pink-200" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter className="p-4 bg-black/20">
-                  <Button 
-                    className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 border-0 shadow-md" 
-                    onClick={handlePurchaseAccessories}
-                  >
-                    {t('shopPage.premiumTab.allAccessories.buyButton')}
-                  </Button>
-                </CardFooter>
-              </Card>
             </div>
             <div className="text-center text-sm text-gray-400 mt-8">
               {t('shopPage.premiumTab.cancellationPolicy')}
@@ -322,37 +237,6 @@ const ShopPage = () => {
                 </div>
               </div>
             )}
-          </TabsContent>
-          
-          <TabsContent value="accessories" className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {accessories.map(item => (
-                <Card key={item.id} className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm overflow-hidden">
-                  <div className="flex flex-col sm:flex-row">
-                    <div className="w-full sm:w-1/3 bg-gray-800 h-auto sm:h-full min-h-[100px] relative">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      {item.tag && (
-                        <Badge className="absolute top-2 left-2 bg-rulet-purple">
-                          {item.tag}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="p-4 flex flex-col justify-between w-full sm:w-2/3">
-                      <div>
-                        <h3 className="font-medium mb-1">{item.name}</h3>
-                        <p className="text-sm text-gray-400 mb-3">{item.description}</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-lg">{item.price}</span>
-                        <Button size="sm" className="bg-rulet-purple hover:bg-rulet-purple/80">
-                          {t('shopPage.accessoriesTab.buyButton')}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
           </TabsContent>
         </Tabs>
       </div>
