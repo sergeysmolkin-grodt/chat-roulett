@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cascadia+Mono:wght@400;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -84,4 +85,8 @@ textarea:-webkit-autofill {
   background-color: #18192a !important;
   color: #fff !important;
   caret-color: #fff !important;
+}
+
+html, body {
+  font-family: 'Cascadia Mono', monospace;
 }

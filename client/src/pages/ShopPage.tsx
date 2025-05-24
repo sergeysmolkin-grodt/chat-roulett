@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 import apiClient from '@/lib/api';
 import { useTranslation } from 'react-i18next';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const ShopPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -16,7 +17,7 @@ const ShopPage = () => {
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
 
   useEffect(() => {
-    document.title = 'YNYIETY';
+    document.title = 'YNYIETY.shop';
   }, []);
 
   const handleInitiateSubscription = async (planId: number) => {
@@ -100,153 +101,182 @@ const ShopPage = () => {
 
   const whyPremiumFeatures = t('shopPage.premiumTab.whyPremiumFeatures', { returnObjects: true }) as { title: string, description: string }[];
 
+  const LanguageSwitcher = () => {
+    const { i18n } = useTranslation();
+    const changeLanguage = (lng: string) => i18n.changeLanguage(lng);
+    return (
+      <div className="flex gap-1 bg-black/40 rounded-full px-2 py-1 shadow-lg">
+        <Button 
+          variant={i18n.language === 'ru' ? "secondary" : "ghost"} 
+          size="sm"
+          onClick={() => changeLanguage('ru')} 
+          className="text-xs p-1 h-auto"
+        >
+          RU
+        </Button>
+        <Button 
+          variant={i18n.language === 'en' ? "secondary" : "ghost"} 
+          size="sm"
+          onClick={() => changeLanguage('en')} 
+          className="text-xs p-1 h-auto"
+        >
+          EN
+        </Button>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen flex flex-col text-white pb-40">
+    <div className="min-h-screen flex flex-col text-white pb-8">
       <div className="pt-6 px-4">
+        <div className="fixed top-6 right-8 z-30 flex gap-4 items-center">
+          <LanguageSwitcher />
+          {user && (
+            <a href="/profile" title={user.username || user.name || 'Профиль'}>
+              <Avatar className="w-12 h-12 border-2 border-rulet-purple shadow-lg">
+                <AvatarImage src={user.avatar_url || undefined} alt={user.name || ''} />
+                <AvatarFallback className="bg-rulet-purple text-white text-xl">{user.name?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+            </a>
+          )}
+        </div>
         <div className="flex items-center gap-2 mb-6">
-          <Store className="text-rulet-purple" />
-          <h1 className="text-xl font-bold">{t('shopPage.title')}</h1>
+          {/* Удаляю иконку магазина <Store /> */}
         </div>
         
-        <Tabs defaultValue="premium" className="w-full">
-          <TabsList className="bg-black/40 text-gray-400 border-b border-rulet-purple/20 rounded-none w-full mb-6 gap-8">
-            <TabsTrigger value="premium" className="data-[state=active]:text-rulet-purple data-[state=active]:border-b-2 data-[state=active]:border-rulet-purple rounded-none h-10 px-4">
-              {t('shopPage.tabs.premium')}
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="premium" className="space-y-8">
-            {/* Большая прозрачная секция магазина */}
-            <div className="w-full flex flex-col items-center justify-center px-4">
-              <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm rounded-lg p-8 max-w-3xl w-full mx-auto mt-8">
-                <div className="space-y-8">
-                  <div className="mb-12 text-center">
-                    <h1 className="text-3xl font-bold text-white mb-4">{t('shopPage.premiumTab.mainTitle')}</h1>
-                    <p className="text-gray-300 max-w-xl mx-auto">
-                      {isFemale 
-                        ? t('shopPage.premiumTab.mainDescriptionFemale')
-                        : isSubscribed 
-                          ? t('shopPage.premiumTab.mainDescriptionSubscribed')
-                          : t('shopPage.premiumTab.mainDescriptionDefault')}
-                    </p>
-                  </div>
+        {/* Удаляю TabsList и TabsTrigger */}
+        {/* <TabsList> ... </TabsList> */}
+        {/* <TabsTrigger value="premium"> ... </TabsTrigger> */}
+        {/* Удаляю TabsContent тоже, если он пустой */}
+        {/* <TabsContent value="premium" className="space-y-8"> ... </TabsContent> */}
+        {/* Большая прозрачная секция магазина */}
+        <div className="w-full flex flex-col items-center justify-center px-4">
+          <Card className="border-rulet-purple/30 bg-black/40 backdrop-blur-sm rounded-lg p-8 max-w-3xl w-full mx-auto mt-8">
+            <div className="space-y-8">
+              <div className="mb-12 text-center">
+                <h1 className="text-3xl font-bold text-white mb-4">{t('shopPage.premiumTab.mainTitle')}</h1>
+                <p className="text-gray-300 max-w-xl mx-auto">
+                  {isFemale 
+                    ? t('shopPage.premiumTab.mainDescriptionFemale')
+                    : isSubscribed 
+                      ? t('shopPage.premiumTab.mainDescriptionSubscribed')
+                      : t('shopPage.premiumTab.mainDescriptionDefault')}
+                </p>
+              </div>
 
-                  {isSubscribed && (
-                    <div className="mb-12 text-center p-6 bg-green-500/10 border border-green-500 rounded-lg">
-                        <h2 className="text-2xl font-bold text-green-400">{t('shopPage.premiumTab.subscribedMessageTitle')}</h2>
-                        {user?.subscription_ends_at && (
-                            <p className="text-gray-300">{t('shopPage.premiumTab.subscriptionEndsText')} {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
-                        )}
-                    </div>
-                  )}
+              {isSubscribed && (
+                <div className="mb-12 text-center p-6 bg-green-500/10 border border-green-500 rounded-lg">
+                    <h2 className="text-2xl font-bold text-green-400">{t('shopPage.premiumTab.subscribedMessageTitle')}</h2>
+                    {user?.subscription_ends_at && (
+                        <p className="text-gray-300">{t('shopPage.premiumTab.subscriptionEndsText')} {new Date(user.subscription_ends_at).toLocaleDateString()}</p>
+                    )}
+                </div>
+              )}
 
-                  {isFemale && (
-                     <div className="mb-12 text-center p-6 bg-pink-500/10 border border-pink-500 rounded-lg">
-                        <h2 className="text-2xl font-bold text-pink-400">{t('shopPage.premiumTab.femaleAccessMessageTitle')}</h2>
-                        <p className="text-gray-300">{t('shopPage.premiumTab.femaleAccessMessageText')}</p>
+              {isFemale && (
+                 <div className="mb-12 text-center p-6 bg-pink-500/10 border border-pink-500 rounded-lg">
+                    <h2 className="text-2xl font-bold text-pink-400">{t('shopPage.premiumTab.femaleAccessMessageTitle')}</h2>
+                    <p className="text-gray-300">{t('shopPage.premiumTab.femaleAccessMessageText')}</p>
+                </div>
+              )}
+              
+              {/* Карточки: Антискип и Премиум */}
+              <div className="flex flex-col lg:flex-row gap-6 justify-center items-start mb-8">
+                {/* Антискип */}
+                <Card key={antiskipProduct.id} className={`border border-rulet-purple/50 ${antiskipProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
+                  <CardHeader className="pb-3 pt-4">
+                    <CardTitle className="text-xl">{antiskipProduct.name}</CardTitle>
+                    <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
+                    <div className="flex items-end gap-1 mt-1">
+                      <span className="text-2xl font-bold">{antiskipProduct.price}</span>
                     </div>
-                  )}
-                  
-                  {/* Карточки: Антискип и Премиум */}
-                  <div className="flex flex-col lg:flex-row gap-6 justify-center items-start mb-8">
-                    {/* Антискип */}
-                    <Card key={antiskipProduct.id} className={`border border-rulet-purple/50 ${antiskipProduct.color} text-white overflow-hidden relative flex flex-col shadow-lg lg:max-w-xs w-full`}>
-                      <CardHeader className="pb-3 pt-4">
-                        <CardTitle className="text-xl">{antiskipProduct.name}</CardTitle>
-                        <p className="text-sm text-gray-300">{antiskipProduct.description}</p>
-                        <div className="flex items-end gap-1 mt-1">
-                          <span className="text-2xl font-bold">{antiskipProduct.price}</span>
+                  </CardHeader>
+                  <CardContent className="pb-4 flex-grow">
+                    <ul className="space-y-1.5 mb-4">
+                      {antiskipProduct.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-sky-400" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                  <CardFooter className="p-4 bg-black/20">
+                    <Button 
+                      className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
+                      onClick={handlePurchaseAntiskip}
+                    >
+                      {t('shopPage.premiumTab.antiskip.buyButton')}
+                    </Button>
+                  </CardFooter>
+                </Card>
+                {/* Премиум — только для мужчин без подписки */}
+                {isAuthenticated && user && user.gender === 'male' && !isSubscribed && premiumPlans.map(plan => (
+                  <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
+                    {plan.popular && (
+                      <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+                        {t('shopPage.premiumTab.popularBadge')}
+                      </div>
+                    )}
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                        <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
+                      </div>
+                      <div className="flex items-end gap-1 mt-2">
+                        <span className="text-3xl font-bold">{plan.price}</span>
+                        <span className="text-base opacity-80">{plan.period}</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-6 flex-grow">
+                      <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
+                      <ul className="space-y-2 mb-6">
+                        {plan.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <ThumbsUp className="w-5 h-5 text-green-400" />
+                            <span className="text-base">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter className="p-6 bg-black/20">
+                      <Button 
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
+                        onClick={() => handleInitiateSubscription(plan.id)}
+                        disabled={isLoadingCheckout}
+                      >
+                        {isLoadingCheckout ? t('shopPage.premiumTab.processingButton') : t('shopPage.premiumTab.premiumPlan.activateButton')}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+              <div className="text-center text-sm text-gray-400 mt-8">
+                {t('shopPage.premiumTab.cancellationPolicy')}
+              </div>
+              {/* Why Premium section: показывать только если не женщина и нет подписки */}
+              {!isFemale && !isSubscribed && (
+                <div className="text-center my-16">
+                  <h2 className="text-2xl font-semibold text-white mb-8">{t('shopPage.premiumTab.whyPremiumTitle')}</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {whyPremiumFeatures.map((item, index) => (
+                      <div key={index} className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
+                        <div className="text-rulet-purple text-4xl mb-4">
+                          {index === 0 && <Zap className="w-12 h-12 mx-auto" />}
+                          {index === 1 && <ShieldCheck className="w-12 h-12 mx-auto" />}
+                          {index === 2 && <Sparkles className="w-12 h-12 mx-auto" />}
                         </div>
-                      </CardHeader>
-                      <CardContent className="pb-4 flex-grow">
-                        <ul className="space-y-1.5 mb-4">
-                          {antiskipProduct.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-center gap-2">
-                              <ShieldCheck className="w-4 h-4 text-sky-400" />
-                              <span className="text-sm">{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                      <CardFooter className="p-4 bg-black/20">
-                        <Button 
-                          className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 border-0 shadow-md" 
-                          onClick={handlePurchaseAntiskip}
-                        >
-                          {t('shopPage.premiumTab.antiskip.buyButton')}
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                    {/* Премиум — только для мужчин без подписки */}
-                    {isAuthenticated && user && user.gender === 'male' && !isSubscribed && premiumPlans.map(plan => (
-                      <Card key={plan.id} className={`border-2 border-yellow-500 ${plan.color} text-white overflow-hidden relative flex flex-col shadow-2xl lg:max-w-md w-full`}>
-                        {plan.popular && (
-                          <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
-                            {t('shopPage.premiumTab.popularBadge')}
-                          </div>
-                        )}
-                        <CardHeader className="pb-4">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                            <Badge variant="outline" className="text-yellow-400 border-yellow-400 bg-black/30">{t('shopPage.premiumTab.recommendedBadge')}</Badge>
-                          </div>
-                          <div className="flex items-end gap-1 mt-2">
-                            <span className="text-3xl font-bold">{plan.price}</span>
-                            <span className="text-base opacity-80">{plan.period}</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pb-6 flex-grow">
-                          <p className="text-sm text-yellow-100/90 mb-4">{t('shopPage.premiumTab.premiumPlan.unlockFeaturesText')}</p>
-                          <ul className="space-y-2 mb-6">
-                            {plan.features.map((feature, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                <ThumbsUp className="w-5 h-5 text-green-400" />
-                                <span className="text-base">{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                        <CardFooter className="p-6 bg-black/20">
-                          <Button 
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-lg font-semibold py-3 border-0 shadow-md" 
-                            onClick={() => handleInitiateSubscription(plan.id)}
-                            disabled={isLoadingCheckout}
-                          >
-                            {isLoadingCheckout ? t('shopPage.premiumTab.processingButton') : t('shopPage.premiumTab.premiumPlan.activateButton')}
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                        <h3 className="text-white text-lg font-medium mb-2">{item.title}</h3>
+                        <p className="text-gray-400">{item.description}</p>
+                      </div>
                     ))}
                   </div>
-                  <div className="text-center text-sm text-gray-400 mt-8">
-                    {t('shopPage.premiumTab.cancellationPolicy')}
-                  </div>
-                  {/* Why Premium section: показывать только если не женщина и нет подписки */}
-                  {!isFemale && !isSubscribed && (
-                    <div className="text-center my-16">
-                      <h2 className="text-2xl font-semibold text-white mb-8">{t('shopPage.premiumTab.whyPremiumTitle')}</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {whyPremiumFeatures.map((item, index) => (
-                          <div key={index} className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30 hover:shadow-rulet-purple/30 shadow-lg transition-shadow">
-                            <div className="text-rulet-purple text-4xl mb-4">
-                              {index === 0 && <Zap className="w-12 h-12 mx-auto" />}
-                              {index === 1 && <ShieldCheck className="w-12 h-12 mx-auto" />}
-                              {index === 2 && <Sparkles className="w-12 h-12 mx-auto" />}
-                            </div>
-                            <h3 className="text-white text-lg font-medium mb-2">{item.title}</h3>
-                            <p className="text-gray-400">{item.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </Card>
+              )}
             </div>
-          </TabsContent>
-        </Tabs>
+          </Card>
+        </div>
       </div>
-      <div className="h-[300px] bg-transparent" />
     </div>
   );
 };
