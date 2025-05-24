@@ -8,6 +8,7 @@ import Pusher from 'pusher-js';
 import apiService from '@/services/apiService';
 import { toast as sonnerToast } from 'sonner';
 import { Search, Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import useApiService from '@/hooks/useApiService';
 
 // Declare Pusher and Echo on the window object
 interface CustomWindow extends Window {
@@ -16,8 +17,14 @@ interface CustomWindow extends Window {
 }
 declare let window: CustomWindow;
 
+interface PendingOfferDetails {
+  roomId: string;
+  isOfferer: boolean;
+}
+
 const VideoChat: React.FC = () => {
   const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const apiService = useApiService(); // Assuming useApiService is correctly set up
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const currentLocalStreamRef = useRef<MediaStream | null>(null); // Ref to current stream for cleanup
@@ -37,9 +44,11 @@ const VideoChat: React.FC = () => {
   const [partnerId, setPartnerId] = useState<number | null>(null);
   const [statusMessage, setStatusMessage] = useState('Click "Search Partner" to start.');
   
-  const [pendingOfferDetails, setPendingOfferDetails] = useState<{ roomId: string } | null>(null);
+  const pendingOfferDetailsRef = useRef<PendingOfferDetails | null>(null);
+  const offerCreationInProgressRef = useRef(false); // New ref to track offer creation
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]); // Added for ICE candidate queuing
   const echoInstanceRef = useRef<any | null>(null); // Using any
   const echoInitializedRef = useRef(false);
 
@@ -48,17 +57,42 @@ const VideoChat: React.FC = () => {
   // Moved useCallback-memoized functions to the top
 
   const initializeLocalStream = useCallback(async (deviceId?: string, isRetryAttempt: boolean = false) => {
-    console.log(`Initializing local stream. Device: ${deviceId || "default"}, Retry: ${isRetryAttempt}, Current stream exists: ${!!currentLocalStreamRef.current}`);
+    console.log(`Initializing local stream. Device: ${deviceId || "default"}, Retry: ${isRetryAttempt}, Current stream ref: ${currentLocalStreamRef.current?.id}`);
     
-    if (currentLocalStreamRef.current) {
-        console.log("Stopping existing local stream tracks.");
-        currentLocalStreamRef.current.getTracks().forEach(track => track.stop());
+    // Check if a suitable stream already exists and is active
+    if (currentLocalStreamRef.current && currentLocalStreamRef.current.active) {
+        const currentTracks = currentLocalStreamRef.current.getVideoTracks();
+        if (currentTracks.length > 0) {
+            const currentDeviceId = currentTracks[0].getSettings().deviceId;
+            if ((!deviceId && currentLocalStreamRef.current) || (deviceId && currentDeviceId === deviceId)) {
+                console.log("initializeLocalStream: Active and suitable stream already exists. Reusing it.");
+                // Ensure localVideoRef is updated if it somehow lost the stream
+                if (localVideoRef.current && localVideoRef.current.srcObject !== currentLocalStreamRef.current) {
+                    localVideoRef.current.srcObject = currentLocalStreamRef.current;
+                }
+                 // Update state if it's out of sync with the ref (e.g. on initial load)
+                if (localStream !== currentLocalStreamRef.current) {
+                    setLocalStream(currentLocalStreamRef.current);
+                }
+                return { stream: currentLocalStreamRef.current, error: null };
+            }
+            console.log(`initializeLocalStream: Existing stream device (${currentDeviceId}) does not match requested (${deviceId}). Proceeding to get new stream.`);
+        }
     }
-    setLocalStream(null);
+
+    // If no suitable active stream, stop any existing (potentially old or unsuitable) stream before getting a new one.
+    if (currentLocalStreamRef.current) {
+        console.log("Stopping existing local stream tracks before acquiring a new one.");
+        currentLocalStreamRef.current.getTracks().forEach(track => track.stop());
+        currentLocalStreamRef.current = null; // Clear the ref as it's now stopped
+    }
+    // Also clear the state and video element srcObject immediately
+    setLocalStream(null); 
     if (localVideoRef.current) {
         localVideoRef.current.srcObject = null;
     }
-    setIsCameraOff(false);
+    // Reset mute/camera off states only when actually acquiring a new stream from scratch
+    setIsCameraOff(false); 
     setIsMuted(false);
 
     console.log(`Attempting to getUserMedia with deviceId: ${deviceId || 'undefined (default)'}`);
@@ -130,8 +164,8 @@ const VideoChat: React.FC = () => {
     }
   }, [roomId]); // roomId is a dependency to correctly leave the room channel.
 
-  const setupPeerConnection = useCallback((currentRoomId: string) => {
-    console.log("Setting up PeerConnection for room:", currentRoomId);
+  const setupPeerConnection = useCallback((currentRoomId: string, streamForPc: MediaStream) => {
+    console.log("Setting up PeerConnection for room:", currentRoomId, "With stream:", streamForPc.id);
     if (pcRef.current) {
         console.log("Closing existing PeerConnection before setup.");
         pcRef.current.close();
@@ -141,10 +175,31 @@ const VideoChat: React.FC = () => {
     });
     console.log("PeerConnection created.");
 
-    // Add transceivers for audio and video to ensure m-lines are present
-    pc.addTransceiver('video', { direction: 'sendrecv' });
-    pc.addTransceiver('audio', { direction: 'sendrecv' });
-    console.log("Transceivers added.");
+    if (streamForPc.getVideoTracks().length > 0) {
+        const videoTrack = streamForPc.getVideoTracks()[0];
+        console.log("Adding video transceiver for track:", videoTrack, "from stream:", streamForPc.id);
+        try {
+            pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [streamForPc] });
+        } catch (e) {
+            console.error("Error adding video transceiver:", e, videoTrack);
+        }
+    } else {
+        console.log("No video tracks found in streamForPc to add via transceiver.");
+    }
+
+    if (streamForPc.getAudioTracks().length > 0) {
+        const audioTrack = streamForPc.getAudioTracks()[0];
+        console.log("Adding audio transceiver for track:", audioTrack, "from stream:", streamForPc.id);
+        try {
+            pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [streamForPc] });
+        } catch (e) {
+            console.error("Error adding audio transceiver:", e, audioTrack);
+        }
+    } else {
+        console.log("No audio tracks found in streamForPc to add via transceiver.");
+    }
+
+    console.log("Transceivers added (if tracks were available).");
 
     pc.onicecandidate = event => {
         console.log(`onicecandidate event: ${event.candidate ? 'candidate found' : 'no more candidates'}`);
@@ -183,94 +238,95 @@ const VideoChat: React.FC = () => {
     };
     console.log("onconnectionstatechange handler assigned.");
 
-    // Tracks will be added by the useEffect watching [localStream]
-    // if (localStream) {
-    //     console.log("Local stream exists, adding tracks to new PC.");
-    //     localStream.getTracks().forEach(track => {
-    //         console.log("Adding track to PC:", track);
-    //         pc.addTrack(track, localStream);
-    //     });
-    // } else {
-    //     console.warn("Local stream not available for PC setup. Will proceed without sending local tracks initially.");
-    // }
     pcRef.current = pc;
     console.log("PeerConnection setup complete, pcRef assigned.");
     return pc;
-  }, [user, handleHangUp]); // MODIFIED: Removed localStream from dependencies
+  }, [user, handleHangUp]);
 
   const createOffer = useCallback(async (currentRoomId: string, isDeferredCall = false) => {
+    console.log(`Attempting to create offer. Room: ${currentRoomId}, Deferred: ${isDeferredCall}, HasStream: ${!!localStream}, InProgress: ${offerCreationInProgressRef.current}`);
+    if (offerCreationInProgressRef.current && !isDeferredCall) {
+        console.warn("createOffer: Offer creation already in progress. Ignoring redundant call.");
+        return;
+    }
     if (!user || !currentRoomId) {
-        console.log("createOffer: User or currentRoomId missing, returning.", "User:", !!user, "RoomID:", currentRoomId);
+        console.error('CreateOffer: User or Room ID missing.', { userId: user?.id, currentRoomId });
+        offerCreationInProgressRef.current = false; // Reset flag on early exit
         return;
     }
-    console.log(`Creating offer for room: ${currentRoomId}. Is deferred: ${isDeferredCall}`);
-    let pc = pcRef.current;
-    if (!pc || pc.signalingState === 'closed') {
-        console.log("createOffer: PC closed or not found, setting up new one.");
-        pc = setupPeerConnection(currentRoomId);
-    }
-    if (!pc) { 
-        console.error("createOffer: Failed to setup PeerConnection for creating offer.");
-        sonnerToast.error("Video connection error: PC setup failed for offer.");
-        return;
-    }
-    
+
+    offerCreationInProgressRef.current = true;
+
     if (!localStream) {
-        if (!isDeferredCall) { // Only set pending if this is the initial, non-deferred call
-            console.warn("createOffer: Local stream not available. Setting pending offer details for room:", currentRoomId);
-            setPendingOfferDetails({ roomId: currentRoomId });
-            setStatusMessage('Camera initializing, preparing to send offer...');
+        console.log('createOffer: Local stream not available. Setting pending offer details for room:', currentRoomId);
+        pendingOfferDetailsRef.current = { roomId: currentRoomId, isOfferer: true };
+        if (!currentLocalStreamRef.current) {
+            console.log("createOffer: Preemptively initializing local stream as it's not available for pending offer.");
+            initializeLocalStream(selectedVideoDeviceId, false);
         }
-        // For both initial and deferred calls, if stream is still not here, log and exit
-        console.warn("createOffer: Local stream still not available. Offer will not be made at this time.");
-        // sonnerToast.info("Your Camera/Mic is not available. Waiting for it to send offer.");
-        return; 
-    } else {
-        console.log("createOffer: Local stream available. Tracks should be on PC (or will be shortly by useEffect).");
+        offerCreationInProgressRef.current = false; // Reset flag, actual offer not created yet
+        return;
     }
-    
-    // Ensure PC is stable. If it's not, and this is a deferred call, something else might be wrong.
-    // If it's an initial call and not stable, it might be okay if it becomes stable soon.
-    if (pc.signalingState !== 'stable') {
-        console.warn(`Skipping offer creation, PC not in stable state: ${pc.signalingState}. isDeferredCall: ${isDeferredCall}`);
-        // If it's an initial call and not stable, perhaps we should also pend, or rely on future calls?
-        // For now, only proceed if stable.
-        if (!isDeferredCall) {
-             // Maybe set pending again if not stable on initial call? Or assume another mechanism will retry?
+
+    let pc = pcRef.current;
+    if (!pc || pc.signalingState !== 'stable') {
+        console.log(`CreateOffer: PC not ready or not stable (State: ${pc?.signalingState}). Setting up new PC for room: ${currentRoomId}`);
+        pc = setupPeerConnection(currentRoomId, localStream);
+        if (!pc) {
+            console.error("CreateOffer: Failed to setup PeerConnection.");
+            sonnerToast.error("Failed to setup video connection.");
+            offerCreationInProgressRef.current = false; // Reset flag
+            return;
         }
-        return; 
     }
 
     try {
-        // This part should only execute if localStream is available AND pc is stable.
-        console.log("PC is stable, creating offer. PC state:", pc.signalingState);
+        console.log("CreateOffer: Creating SDP offer.");
         const offer = await pc.createOffer();
-        console.log("Offer created. PC state before setLocalDescription:", pc.signalingState, "Offer SDP:", offer.sdp ? offer.sdp.substring(0,30)+"..." : "N/A");
         await pc.setLocalDescription(offer);
-        console.log("Offer set as local description. PC state:", pc.signalingState);
+        console.log("CreateOffer: Offer created and local description set. Signaling offer.");
+
         apiService.post('/video-chat/send-signal', {
             roomId: currentRoomId,
             signalData: { type: 'offer', sdp: offer.sdp },
         });
-        console.log("Offer sent to signaling server.");
-        setStatusMessage('Offer sent. Waiting for partner...');
-    } catch (error) {
-        console.error('Create offer error:', error);
-        sonnerToast.error("Failed to create video offer.");
+        
+        setStatusMessage("Connecting to partner...");
+        pendingOfferDetailsRef.current = null; // Offer process initiated, clear pending details
+        offerCreationInProgressRef.current = false; // Reset flag after successful initiation
+
+    } catch (error: any) {
+        console.error('Create offer error:', error.name, error.message, error);
+        sonnerToast.error(`Failed to create video offer: ${error.message}`);
+        offerCreationInProgressRef.current = false; // Reset flag on error
+        // Do not re-set pendingOfferDetailsRef here, let a new search attempt handle it if needed.
     }
-}, [user, localStream, setupPeerConnection]);
+  }, [user, localStream, setupPeerConnection, apiService, setStatusMessage, initializeLocalStream, selectedVideoDeviceId]);
 
   const handleSignalingData = useCallback(async (data: any) => {
     if (!roomId || !user) {
-        console.log("handleSignalingData: roomId or user missing, returning.", "RoomID:", roomId, "User:", !!user);
+        console.log("handleSignalingData: roomId or user missing.");
         return;
     }
-    let pc = pcRef.current;
-    console.log("handleSignalingData: Received data type:", data?.type, "Current PC state:", pc?.signalingState);
+    console.log("handleSignalingData: Received data type:", data?.type, "Current PC state:", pcRef.current?.signalingState, "Has localStream:", !!localStream);
+    
+    let currentLocalStream = localStream;
+    if (!currentLocalStream) {
+        console.log("handleSignalingData: localStream is null, attempting to initialize for receiving offer/answer.");
+        const initResult = await initializeLocalStream(selectedVideoDeviceId); 
+        currentLocalStream = initResult.stream;
+        if(!currentLocalStream) {
+            sonnerToast.error("Failed to initialize camera to handle signaling. Cannot proceed.");
+            console.error("handleSignalingData: Local stream initialization failed. Cannot setup PC.");
+            return;
+        }
+        console.log("handleSignalingData: localStream initialized for signaling handling.");
+    }
 
+    let pc = pcRef.current;
     if (!pc || pc.signalingState === 'closed') {
-        console.log("handleSignalingData: PC closed or not found, setting up new one for room:", roomId);
-        pc = setupPeerConnection(roomId); 
+        console.log("handleSignalingData: PC closed or not found, setting up new one WITH localStream for room:", roomId);
+        pc = setupPeerConnection(roomId, currentLocalStream); 
     }
     if (!pc) { 
         console.error("handleSignalingData: Failed to setup PeerConnection for signaling.");
@@ -278,10 +334,25 @@ const VideoChat: React.FC = () => {
         return;
     }
 
+    const processPendingCandidates = async (currentPC: RTCPeerConnection) => {
+        if (pendingIceCandidatesRef.current.length > 0) {
+            console.log(`Processing ${pendingIceCandidatesRef.current.length} queued ICE candidates.`);
+            for (const candidate of pendingIceCandidatesRef.current) {
+                try {
+                    await currentPC.addIceCandidate(new RTCIceCandidate(candidate));
+                    console.log("Queued ICE candidate added successfully.");
+                } catch (e) {
+                    console.error("Error adding queued ICE candidate:", e, "Candidate:", candidate, "PC State:", currentPC.signalingState);
+                }
+            }
+            pendingIceCandidatesRef.current = []; // Clear the queue
+        }
+    };
+
     try {
         if (data.type === 'offer') {
             console.log("Received offer. PC state before setRemoteDescription:", pc.signalingState, "Offer SDP:", data.sdp ? data.sdp.substring(0,30) + "..." : "N/A");
-            let stream: MediaStream | null = localStream; 
+            let stream: MediaStream | null = currentLocalStream; 
             if (!stream) {
                 console.log("handleSignalingData (offer): localStream is null, attempting to initialize.");
                 const initResult = await initializeLocalStream(selectedVideoDeviceId); 
@@ -296,6 +367,8 @@ const VideoChat: React.FC = () => {
             if(pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-remote-offer' || pc.signalingState === 'have-local-pranswer') { 
                  await pc.setRemoteDescription(new RTCSessionDescription(data));
                  console.log("Offer set as remote description. PC state:", pc.signalingState);
+                 await processPendingCandidates(pc); // Process queued candidates
+
                  const answer = await pc.createAnswer();
                  console.log("Answer created. PC state before setLocalDescription:", pc.signalingState, "Answer SDP:", answer.sdp ? answer.sdp.substring(0,30) + "..." : "N/A");
                  await pc.setLocalDescription(answer);
@@ -316,6 +389,8 @@ const VideoChat: React.FC = () => {
             if (pc.signalingState === 'have-local-offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(data));
                 console.log("Answer set as remote description. PC state:", pc.signalingState);
+                await processPendingCandidates(pc); // Process queued candidates
+
                 setStatusMessage("Call connected!");
                 sonnerToast.success("Call connected!");
             } else {
@@ -323,12 +398,17 @@ const VideoChat: React.FC = () => {
             }
         } else if (data.type === 'candidate') {
             console.log("Received ICE candidate:", data.candidate);
-            if (data.candidate && pc.signalingState !== 'closed' && pc.remoteDescription) { // Ensure remoteDescription is set before adding candidates
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    console.log("ICE candidate added successfully.");
-                } catch (e) {
-                    console.error("Error adding ICE candidate:", e, "Candidate:", data.candidate, "PC State:", pc.signalingState);
+            if (data.candidate && pc.signalingState !== 'closed') {
+                if (pc.remoteDescription) { // Check if remote description is set
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        console.log("ICE candidate added successfully.");
+                    } catch (e) {
+                        console.error("Error adding ICE candidate:", e, "Candidate:", data.candidate, "PC State:", pc.signalingState);
+                    }
+                } else {
+                    console.warn("Remote description not set. Queuing ICE candidate.", data.candidate);
+                    pendingIceCandidatesRef.current.push(data.candidate);
                 }
             } else {
                 console.warn("Could not add ICE candidate. PC State:", pc.signalingState, "RemoteDescription Set:", !!pc.remoteDescription, "Candidate:", data.candidate);
@@ -338,7 +418,7 @@ const VideoChat: React.FC = () => {
         console.error('Signaling error during', data?.type, 'handling:', error);
         sonnerToast.error("Video connection error.");
     }
-  }, [roomId, user, localStream, setupPeerConnection, initializeLocalStream, selectedVideoDeviceId]);
+  }, [roomId, user, localStream, setupPeerConnection, initializeLocalStream, selectedVideoDeviceId, setStatusMessage]);
 
   const handleSearch = useCallback(async () => {
     if (!user) {
@@ -450,98 +530,90 @@ const VideoChat: React.FC = () => {
     currentLocalStreamRef.current = localStream;
   }, [localStream]);
 
-  // Effect to update PC tracks when localStream changes
+  // Effect for handling local stream changes (e.g., when it's initialized or changed)
   useEffect(() => {
-    const pc = pcRef.current;
-    if (!pc || pc.signalingState === 'closed') {
-      console.log("useEffect [localStream]: PC not ready or closed, skipping track update. PC:", pc, "Signaling state:", pc?.signalingState);
-      return; 
-    }
+    console.log('useEffect [localStream]: Triggered. localStream:', localStream?.id, 'pcRef.current:', pcRef.current?.signalingState, 'pendingOfferDetailsRef.current:', pendingOfferDetailsRef.current);
 
-    console.log("useEffect [localStream]: Updating tracks. Has localStream:", !!localStream);
+    if (localStream) {
+      // Scenario 1: PeerConnection exists, update tracks
+      if (pcRef.current) {
+        console.log('useEffect [localStream]: PeerConnection exists. Updating tracks.');
+        const videoTrack = localStream.getVideoTracks()[0];
+        const audioTrack = localStream.getAudioTracks()[0];
 
-    const videoTrack = localStream?.getVideoTracks()[0] || null;
-    const audioTrack = localStream?.getAudioTracks()[0] || null;
+        let videoReplaced = false;
+        let audioReplaced = false;
 
-    let videoReplaced = false;
-    let audioReplaced = false;
-
-    const videoTransceiver = pc.getTransceivers().find(
-      t => (t.sender.track && t.sender.track.kind === 'video') || (t.receiver.track && t.receiver.track.kind === 'video')
-    );
-    const audioTransceiver = pc.getTransceivers().find(
-      t => (t.sender.track && t.sender.track.kind === 'audio') || (t.receiver.track && t.receiver.track.kind === 'audio')
-    );
-
-    if (videoTransceiver && videoTransceiver.sender) {
-      videoTransceiver.sender.replaceTrack(videoTrack)
-        .then(() => {
-            console.log(`Video track ${videoTrack ? 'set' : 'cleared'} on transceiver.`);
-            videoReplaced = true;
-            // Check for pending offer after video track is handled
-            if (pendingOfferDetails && pc.signalingState === 'stable' && localStream) { // ensure localStream is still valid
-                 console.log("useEffect [localStream]: Video track processed, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
-                 createOffer(pendingOfferDetails.roomId, true); 
-                 setPendingOfferDetails(null);
-            }
-        })
-        .catch(e => console.error('Error replacing video track:', e));
-    } else {
-        console.warn("Video transceiver sender not found for track replacement.");
-        // If no video transceiver, but audio might exist and an offer is pending
-        if (!audioTransceiver && pendingOfferDetails && pc.signalingState === 'stable' && localStream) {
-            console.log("useEffect [localStream]: No video transceiver, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
-            createOffer(pendingOfferDetails.roomId, true);
-            setPendingOfferDetails(null);
+        const videoSender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(videoTrack)
+            .then(() => {
+              console.log(`useEffect [localStream]: Video track ${videoTrack ? 'set' : 'cleared'} on sender.`);
+              videoReplaced = true;
+            })
+            .catch(e => console.error('useEffect [localStream]: Error replacing video track:', e));
+        } else {
+          console.warn("useEffect [localStream]: Video sender not found for track replacement.");
         }
-    }
 
-    if (audioTransceiver && audioTransceiver.sender) {
-      audioTransceiver.sender.replaceTrack(audioTrack)
-        .then(() => {
-            console.log(`Audio track ${audioTrack ? 'set' : 'cleared'} on transceiver.`);
-            audioReplaced = true;
-            // Check for pending offer after audio track is (also) handled, 
-            // but only if video didn't already trigger it or if video processing is separate
-            // This logic can become complex if one track is ready before the other and we need both.
-            // For simplicity, let's assume if pendingOfferDetails is still set, it means offer wasn't created.
-            if (pendingOfferDetails && pc.signalingState === 'stable' && localStream) { 
-                 console.log("useEffect [localStream]: Audio track processed, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
-                 createOffer(pendingOfferDetails.roomId, true); 
-                 setPendingOfferDetails(null); // Ensure it's cleared
-            }
-        })
-        .catch(e => console.error('Error replacing audio track:', e));
-    } else {
-        console.warn("Audio transceiver sender not found for track replacement.");
-        // If only video transceiver existed and was handled, and it didn't trigger the offer (e.g. pendingOfferDetails was null then)
-        // but became non-null by the time we check here (less likely with current flow), or if no transceivers at all.
-        if (!videoTransceiver && pendingOfferDetails && pc.signalingState === 'stable' && localStream) { // If no video and no audio transceiver
-             console.log("useEffect [localStream]: No audio/video transceivers, pending offer detected, creating offer for room:", pendingOfferDetails.roomId);
-            createOffer(pendingOfferDetails.roomId, true);
-            setPendingOfferDetails(null);
+        const audioSender = pcRef.current.getSenders().find(s => s.track?.kind === 'audio');
+        if (audioSender) {
+          audioSender.replaceTrack(audioTrack)
+            .then(() => {
+              console.log(`useEffect [localStream]: Audio track ${audioTrack ? 'set' : 'cleared'} on sender.`);
+              audioReplaced = true;
+            })
+            .catch(e => console.error('useEffect [localStream]: Error replacing audio track:', e));
+        } else {
+          console.warn("useEffect [localStream]: Audio sender not found for track replacement.");
         }
-    }
-    // Fallback: If localStream is present, but somehow transceivers weren't found (should not happen with addTransceiver)
-    // or if pendingOfferDetails was set *after* replaceTrack promises resolved (unlikely).
-    // if (localStream && pendingOfferDetails && pc.signalingState === 'stable' && !videoReplaced && !audioReplaced) {
-    //     console.warn("useEffect [localStream]: localStream present, pending offer, but tracks may not have been applied. Attempting offer creation for room:", pendingOfferDetails.roomId);
-    //     createOffer(pendingOfferDetails.roomId, true);
-    //     setPendingOfferDetails(null);
-    // }
+      } else {
+        console.log('useEffect [localStream]: PeerConnection does NOT exist yet.');
+      }
 
-  }, [localStream, pendingOfferDetails, createOffer]);
+      // Scenario 2: Pending offer details exist, and now local stream is available, so create the offer.
+      if (pendingOfferDetailsRef.current && pendingOfferDetailsRef.current.roomId) {
+        console.log('useEffect [localStream]: Pending offer details FOUND. RoomId:', pendingOfferDetailsRef.current.roomId, 'isOfferer:', pendingOfferDetailsRef.current.isOfferer);
+        if (pendingOfferDetailsRef.current.isOfferer) {
+            console.log('useEffect [localStream]: This client is the offerer and local stream is now available. Calling createOffer.');
+            createOffer(pendingOfferDetailsRef.current.roomId, true); // Call createOffer as deferred, local stream is now ready
+            // pendingOfferDetailsRef.current = null; // createOffer should handle this or set new ones if it fails and needs to retry
+        } else {
+            console.log('useEffect [localStream]: Pending details exist, but this client is NOT the offerer. Waiting for offer.');
+        }
+      } else {
+        console.log('useEffect [localStream]: No pending offer details found, or roomId is missing.');
+      }
+
+    } else {
+      console.log('useEffect [localStream]: localStream is null. No action taken regarding tracks or pending offers.');
+    }
+
+    // Cleanup: if the stream captured by this effect instance is being removed,
+    // and it's the same as the one in currentLocalStreamRef, clear the ref.
+    // This is more of a safety for other logic relying on currentLocalStreamRef being accurate.
+    const capturedStreamId = localStream?.id;
+    return () => {
+        if (capturedStreamId && currentLocalStreamRef.current?.id === capturedStreamId) {
+            // console.log(`useEffect [localStream]: Cleanup for stream ${capturedStreamId}. If this was the active stream, it might be cleared or replaced.`);
+        }
+    };
+  }, [localStream, createOffer]); // Dependencies: localStream and createOffer
 
   // Separate useEffect for handling deferred offer creation once all conditions are met
   useEffect(() => {
     const pc = pcRef.current;
-    // Ensure pc is defined and ready before checking its signalingState
-    if (localStream && pendingOfferDetails && pc && pc.signalingState === 'stable') {
-      console.log("useEffect [pendingOffer Trigger]: Conditions met (localStream, pendingOffer, PC stable). Creating deferred offer for room:", pendingOfferDetails.roomId);
-      createOffer(pendingOfferDetails.roomId, true);
-      setPendingOfferDetails(null); // Clear pending details immediately after initiating the deferred offer
+    if (localStream && pendingOfferDetailsRef.current && pendingOfferDetailsRef.current.isOfferer && pc && pc.signalingState === 'stable' && !offerCreationInProgressRef.current) {
+      console.log("useEffect [pendingOffer Trigger]: Conditions met for deferred offer. Room:", pendingOfferDetailsRef.current.roomId);
+      const detailsToOffer = { ...pendingOfferDetailsRef.current }; // Copy details
+      // pendingOfferDetailsRef.current = null; // Clear immediately BEFORE calling createOffer if it's a one-shot trigger
+                                          // However, createOffer itself will set it to null upon successful signaling or handle re-pending
+      createOffer(detailsToOffer.roomId, true); // isDeferredCall = true
+    } else if (pendingOfferDetailsRef.current && pendingOfferDetailsRef.current.isOfferer) {
+        // Log why the deferred offer isn't being made
+        // console.log(`useEffect [pendingOffer Trigger]: Conditions NOT MET. Stream: ${!!localStream}, PC: ${!!pc}, PCState: ${pc?.signalingState}, InProgress: ${offerCreationInProgressRef.current}`);
     }
-  }, [localStream, pendingOfferDetails, pcRef.current?.signalingState, createOffer, setPendingOfferDetails]); // Dependencies carefully chosen
+  }, [localStream, pcRef.current?.signalingState, createOffer]); // Removed pendingOfferDetailsRef.current from deps
 
   // Initialize Echo
   useEffect(() => {
@@ -579,33 +651,29 @@ const VideoChat: React.FC = () => {
                 if (pcRef.current && pcRef.current.signalingState !== 'closed') {
                     console.log("Match found: Closing existing PeerConnection.");
                     pcRef.current.close();
+                    pcRef.current = null;
                 }
                 if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
                 setRemoteStream(null);
+                pendingIceCandidatesRef.current = [];
 
-                setRoomId(event.roomId); 
+                setRoomId(event.roomId);
                 const pId = event.userId1 === user.id ? event.userId2 : event.userId1;
                 setPartnerId(pId);
                 setStatusMessage(`User ${pId} found. Connecting...`);
                 
-                // Always create or recreate PeerConnection on new match
-                console.log("Match found: Setting up new PeerConnection for room:", event.roomId, "Caller has localStream:", !!localStream);
-                let currentPC = setupPeerConnection(event.roomId); 
-                
-                if (!currentPC) { 
-                     console.error("MATCH_FOUND_ERROR: setupPeerConnection returned null/undefined. Cannot proceed.");
-                     sonnerToast.error("Connection setup error after match found.");
-                     return;
-                }
-                console.log("Match found: PeerConnection setup initiated. PC instance from setup:", !!currentPC, "pcRef.current state:", pcRef.current?.signalingState, "Caller has localStream (at this point in match.found handler):", !!localStream);
-
-                console.log(`Match found: My ID: ${user.id}, Partner ID: ${pId}, Am I offerer? ${user.id < pId}`);
-
-                if (user.id < pId) {
-                    console.log("Match found: This client (ID:",user.id,") is the offerer. Calling createOffer for room:", event.roomId);
-                    createOffer(event.roomId); 
-                } else {
-                    console.log("Match found: This client (ID:",user.id,") will await offer. PC state:", currentPC.signalingState, "Does it have local stream?", !!localStream);
+                if (user.id < pId) { // This client is the offerer
+                    console.log("Match found: This client (ID:",user.id,") is the offerer. Preparing to call createOffer for room:", event.roomId);
+                    // If localStream is not yet ready, createOffer will set pendingOfferDetails itself.
+                    // If it is ready, createOffer will proceed.
+                    // No need to set pendingOfferDetailsRef.current here explicitly before calling createOffer.
+                    createOffer(event.roomId, false); // Not a deferred call from here
+                } else { 
+                    console.log("Match found: This client (ID:",user.id,") will await offer.");
+                    if (!localStream) {
+                        initializeLocalStream(selectedVideoDeviceId);
+                    }
+                    pendingOfferDetailsRef.current = { roomId: event.roomId, isOfferer: false }; // Set that we are awaiting offer
                 }
             });
     }
@@ -635,7 +703,12 @@ const VideoChat: React.FC = () => {
         
         const channel = (echoInstanceRef.current as any).private(roomChannelName);
         channel.listen('.signaling.event', (event: { userId: number; signalData: any }) => {
-            if (event.userId === user.id) return;
+            console.log(`[RAW PUSHER EVENT USER: ${user?.id}] Received:`, JSON.stringify(event));
+            if (event.userId === user.id) {
+                // console.log(`[USER: ${user.id}] Ignoring own signal: ${event.signalData?.type}`);
+                return;
+            }
+            console.log(`[USER: ${user.id}] Processing signal from ${event.userId}, Type: ${event.signalData?.type}`, event.signalData);
             handleSignalingData(event.signalData);
         });
         
@@ -754,7 +827,7 @@ const VideoChat: React.FC = () => {
           </button>
           <div className="flex-1 flex justify-center">
             <button
-              onClick={roomId ? () => {/* handleHangUp(true) */} : () => {/* handleSearch() */}}
+              onClick={roomId ? () => handleHangUp(true) : () => handleSearch()}
               disabled={isSearching}
               className={`rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg transition-all duration-150 ${roomId ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} disabled:bg-gray-500 disabled:opacity-60 disabled:cursor-not-allowed`}
               aria-label={roomId ? 'Hang Up' : 'Search Partner'}
@@ -795,3 +868,4 @@ const VideoChat: React.FC = () => {
 };
 
 export default VideoChat;
+

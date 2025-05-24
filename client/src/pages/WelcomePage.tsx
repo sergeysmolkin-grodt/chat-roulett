@@ -1,77 +1,83 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import Logo from '@/components/Logo';
 import DownloadAppButtons from '@/components/DownloadAppButtons';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const WelcomePage = () => {
+  const { t } = useTranslation();
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-rulet-dark p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-rulet-dark p-4 relative">
+      <LanguageSwitcher />
       <div className="max-w-3xl mx-auto text-center">
-        <div className="mb-8">
-          <Logo />
+        {/* Adding YNVIETY as the main title, adjusted margins */}
+        <div className="mt-20 mb-10">
+          <span
+            className="text-6xl font-bold tracking-widest drop-shadow-lg bg-gradient-to-r from-green-400 to-purple-600 text-transparent bg-clip-text"
+            style={{ fontFamily: 'Bangers, cursive, sans-serif', letterSpacing: '0.15em' }}
+          >
+            YNYIETY
+          </span>
         </div>
         
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-rulet-purple to-rulet-blue">
-            Video Chat Roulette
-          </span>
-        </h1>
-        
         <p className="text-xl text-gray-300 mb-8 max-w-xl mx-auto">
-          Connect with new people through random video chats. 
-          Free for women, premium access for men.
+          {t('welcome.description')}
         </p>
         
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+        {/* Centered Start Chatting button */}
+        <div className="flex justify-center mb-4">
           <Link to="/chat">
-            <Button className="bg-rulet-purple hover:bg-rulet-purple-dark text-white font-bold py-3 px-8 rounded-lg text-lg">
-              Start Chatting
+            <Button className="bg-rulet-purple hover:bg-rulet-purple-dark text-white font-bold py-3 px-8 rounded-lg text-lg w-full sm:w-auto">
+              {t('welcome.startChatting')}
             </Button>
           </Link>
-          
+        </div>
+        
+        {/* Centered Get Premium and Login buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
           <Link to="/premium">
-            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-3 px-8 rounded-lg text-lg">
-              Get Premium
+            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-3 px-8 rounded-lg text-lg w-full sm:w-auto">
+              {t('welcome.getPremium')}
             </Button>
           </Link>
           
           <Link to="/login">
-            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-3 px-8 rounded-lg text-lg">
-              Login
+            <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-3 px-8 rounded-lg text-lg w-full sm:w-auto">
+              {t('welcome.login')}
             </Button>
           </Link>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30">
-            <h3 className="text-white text-lg font-medium mb-2">Free For Women</h3>
-            <p className="text-gray-400">Women enjoy completely free access to all features.</p>
+            <h3 className="text-white text-lg font-medium mb-2">{t('welcome.features.freeForWomen.title')}</h3>
+            <p className="text-gray-400">{t('welcome.features.freeForWomen.description')}</p>
           </div>
           
           <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30">
-            <h3 className="text-white text-lg font-medium mb-2">AI Verification</h3>
-            <p className="text-gray-400">Our AI ensures users are who they claim to be.</p>
+            <h3 className="text-white text-lg font-medium mb-2">{t('welcome.features.aiVerification.title')}</h3>
+            <p className="text-gray-400">{t('welcome.features.aiVerification.description')}</p>
           </div>
           
           <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg border border-rulet-purple/30">
-            <h3 className="text-white text-lg font-medium mb-2">Instant Connections</h3>
-            <p className="text-gray-400">Premium users get instant matches with real people.</p>
+            <h3 className="text-white text-lg font-medium mb-2">{t('welcome.features.instantConnections.title')}</h3>
+            <p className="text-gray-400">{t('welcome.features.instantConnections.description')}</p>
           </div>
         </div>
         
         <div className="mb-8">
-          <p className="text-gray-300 mb-4">New to our platform?</p>
+          <p className="text-gray-300 mb-4">{t('welcome.newToPlatform')}</p>
           <Link to="/register">
             <Button variant="outline" className="border-rulet-purple text-rulet-purple hover:bg-rulet-purple/10 font-bold py-2 px-6 rounded-lg">
-              Register Now
+              {t('welcome.registerNow')}
             </Button>
           </Link>
         </div>
         
-        <h2 className="text-2xl font-semibold text-white mb-4">Get Our Mobile App</h2>
-        <p className="text-gray-300 mb-6">Continue your experience on the go with our mobile apps.</p>
+        <h2 className="text-2xl font-semibold text-white mb-4">{t('welcome.getMobileApp.title')}</h2>
+        <p className="text-gray-300 mb-6">{t('welcome.getMobileApp.description')}</p>
         <DownloadAppButtons />
       </div>
     </div>

@@ -108,11 +108,11 @@ const App = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-rulet-bg text-white">
-      <ProjectBrand />
+      {location.pathname !== '/' && <ProjectBrand />}
       <BackgroundSwitcher />
       <AppBackground />
-      {isAuthenticated && <NavBar />}
-      <main className={`flex-grow ${isAuthenticated ? 'pb-16' : ''}`}>
+      {isAuthenticated && location.pathname !== '/' && <NavBar />}
+      <main className={`flex-grow ${isAuthenticated && location.pathname !== '/welcome' ? 'pb-16' : ''}`}>
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />

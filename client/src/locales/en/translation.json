@@ -276,5 +276,31 @@
       "friends": "Friends:",
       "firstCall": "First call date:"
     }
+  },
+  "welcome": {
+    "description": "Connect with new people through random video chats. \nFree for women, premium access for men.",
+    "startChatting": "Start Chatting",
+    "getPremium": "Get Premium",
+    "login": "Login",
+    "features": {
+      "freeForWomen": {
+        "title": "Free For Women",
+        "description": "Women enjoy completely free access to all features."
+      },
+      "aiVerification": {
+        "title": "AI Verification",
+        "description": "Our AI ensures users are who they claim to be."
+      },
+      "instantConnections": {
+        "title": "Instant Connections",
+        "description": "Premium users get instant matches with real people."
+      }
+    },
+    "newToPlatform": "New to our platform?",
+    "registerNow": "Register Now",
+    "getMobileApp": {
+      "title": "Get Our Mobile App",
+      "description": "Continue your experience on the go with our mobile apps."
+    }
   }
 } 
